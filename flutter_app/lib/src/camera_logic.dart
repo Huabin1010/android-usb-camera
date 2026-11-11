@@ -42,3 +42,16 @@ const rotateOptions = <String, String>{
 };
 
 const segmentOptions = <int>[0, 1, 5, 10, 30];
+
+/// 快门和模式条占用的高度。面板停在这条线上面，不再把它们挤出屏幕。
+const captureBarReserve = 196.0;
+
+/// 侧栏浮层宽度。右侧留出帧率，宽屏不超过 300。
+double overlayPanelWidth(double previewWidth) {
+  const gutter = 104.0;
+  final room = previewWidth - gutter;
+  if (room < 180) {
+    return (previewWidth * 0.62).clamp(0, 300);
+  }
+  return room.clamp(180, 300);
+}

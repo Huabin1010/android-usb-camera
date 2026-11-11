@@ -3,10 +3,12 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import 'camera_client.dart';
 import 'camera_logic.dart';
 import 'camera_snapshot.dart';
+import 'theme.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key, required this.client});
@@ -49,9 +51,8 @@ class _CameraScreenState extends State<CameraScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: C.bg,
       body: SafeArea(
         child: Row(
           children: [
@@ -59,32 +60,128 @@ class _CameraScreenState extends State<CameraScreen> {
               selected: _section,
               onSelect: _toggle,
             ),
-            if (_section != null)
-              SizedBox(
-                width: 300,
-                child: _Panel(
-                  client: widget.client,
-                  section: _section!,
-                  onClose: () => setState(() => _section = null),
-                ),
-              ),
             Expanded(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  const _Preview(),
-                  if (_section != null)
-                    GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => setState(() => _section = null),
-                    ),
-                  _StatusCluster(client: widget.client),
-                  _CaptureBar(client: widget.client),
-                  _ConnectionMessage(client: widget.client, color: scheme.onSurface),
-                ],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final short = constraints.maxHeight < 520;
+                  final reserve = short ? 112.0 : captureBarReserve;
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      const _Preview(),
+                      _ConnectionMessage(client: widget.client),
+                      if (_section != null)
+                        Positioned.fill(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onTap: () => setState(() => _section = null),
+                          ),
+                        ),
+                      _SidePanel(
+                        open: _section != null,
+                        width: overlayPanelWidth(constraints.maxWidth),
+                        bottomReserve: reserve,
+                        child: _section == null
+                            ? const SizedBox.shrink()
+                            : _Panel(
+                                client: widget.client,
+                                section: _section!,
+                                onClose: () => setState(() => _section = null),
+                              ),
+                      ),
+                      _StatusCluster(client: widget.client),
+                      _CaptureBar(client: widget.client, compact: short),
+                    ],
+                  );
+                },
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SidePanel extends StatefulWidget {
+  const _SidePanel({required this.open, required this.width, required this.bottomReserve, required this.child});
+
+  final bool open;
+  final double width;
+  final double bottomReserve;
+  final Widget child;
+
+  @override
+  State<_SidePanel> createState() => _SidePanelState();
+}
+
+class _SidePanelState extends State<_SidePanel> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: panelDuration,
+    value: widget.open ? 1 : 0,
+  );
+  Widget? _shown;
+
+  @override
+  void initState() {
+    super.initState();
+    _shown = widget.child;
+    _controller.addListener(() => setState(() {}));
+  }
+
+  @override
+  void didUpdateWidget(_SidePanel old) {
+    super.didUpdateWidget(old);
+    if (widget.open) {
+      _shown = widget.child;
+    }
+    if (old.open == widget.open) {
+      return;
+    }
+    if (widget.open) {
+      _controller.forward();
+    } else {
+      _controller.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Curves.easeOutCubic.transform(_controller.value);
+    return Positioned(
+      left: 8,
+      top: 8,
+      bottom: widget.bottomReserve,
+      width: widget.width * t,
+      child: IgnorePointer(
+        ignoring: t == 0,
+        child: ClipRRect(
+          borderRadius: const BorderRadius.horizontal(right: Radius.circular(16)),
+          child: OverflowBox(
+            alignment: Alignment.centerLeft,
+            minWidth: widget.width,
+            maxWidth: widget.width,
+            child: Transform.translate(
+              offset: Offset((t - 1) * 28, 0),
+              child: Opacity(
+                opacity: t,
+                child: DecoratedBox(
+                  decoration: const BoxDecoration(
+                    color: C.surface,
+                    border: Border(right: BorderSide(color: C.border)),
+                  ),
+                  child: _shown ?? widget.child,
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -130,27 +227,43 @@ class _Rail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return ColoredBox(
-      color: scheme.surfaceContainer,
+      color: C.bg,
       child: SizedBox(
-        width: 72,
+        width: 64,
         child: Column(
           children: [
-            const SizedBox(height: 12),
-            _RailButton(id: 'devices', icon: Icons.usb, tooltip: '设备', selected: selected, onSelect: onSelect),
-            _RailButton(id: 'picture', icon: Icons.tune, tooltip: '画面', selected: selected, onSelect: onSelect),
-            _RailButton(id: 'video', icon: Icons.aspect_ratio, tooltip: '视频', selected: selected, onSelect: onSelect),
-            _RailButton(id: 'effects', icon: Icons.photo_filter, tooltip: '效果', selected: selected, onSelect: onSelect),
-            _RailButton(id: 'audio', icon: Icons.graphic_eq, tooltip: '音频', selected: selected, onSelect: onSelect),
-            const Spacer(),
+            const SizedBox(height: 10),
+            const _BrandMark(),
+            const SizedBox(height: 6),
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  _RailButton(id: 'devices', icon: Icons.usb, tooltip: '设备', selected: selected, onSelect: onSelect),
+                  _RailButton(id: 'picture', icon: Icons.tune, tooltip: '画面', selected: selected, onSelect: onSelect),
+                  _RailButton(id: 'video', icon: Icons.aspect_ratio, tooltip: '视频', selected: selected, onSelect: onSelect),
+                  _RailButton(id: 'effects', icon: Icons.photo_filter, tooltip: '效果', selected: selected, onSelect: onSelect),
+                  _RailButton(id: 'audio', icon: Icons.graphic_eq, tooltip: '音频', selected: selected, onSelect: onSelect),
+                ],
+              ),
+            ),
             _RailButton(id: 'settings', icon: Icons.settings, tooltip: '设置', selected: selected, onSelect: onSelect),
             _RailButton(id: 'about', icon: Icons.info_outline, tooltip: '关于', selected: selected, onSelect: onSelect),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
           ],
         ),
       ),
     );
+  }
+}
+
+class _BrandMark extends StatelessWidget {
+  const _BrandMark();
+
+  @override
+  Widget build(BuildContext context) {
+    return SvgPicture.asset('assets/brand/ic_launcher.svg', width: 36, height: 36);
   }
 }
 
@@ -171,20 +284,25 @@ class _RailButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final active = selected == id;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: IconButton(
-        tooltip: tooltip,
-        isSelected: active,
-        style: IconButton.styleFrom(
-          backgroundColor: active ? scheme.secondaryContainer : Colors.transparent,
-          foregroundColor: active ? scheme.onSecondaryContainer : scheme.onSurfaceVariant,
-          minimumSize: const Size(48, 48),
+    return Tooltip(
+      message: tooltip,
+      child: Pressable(
+        onTap: () => onSelect(id),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: AnimatedContainer(
+            duration: revealDuration,
+            curve: Curves.linear,
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: active ? C.surfaceHi : Colors.transparent,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 22, color: active ? C.fg : C.fg48),
+          ),
         ),
-        onPressed: () => onSelect(id),
-        icon: Icon(icon),
       ),
     );
   }
@@ -199,18 +317,29 @@ class _Panel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: scheme.surfaceContainerHigh,
+    return DecoratedBox(
+      decoration: const BoxDecoration(color: C.surface),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 8, 0),
+            padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
             child: Row(
               children: [
-                Expanded(child: Text(_title(section), style: Theme.of(context).textTheme.titleLarge)),
-                IconButton(onPressed: onClose, icon: const Icon(Icons.close)),
+                Expanded(
+                  child: Text(
+                    _title(section),
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: C.fg),
+                  ),
+                ),
+                Pressable(
+                  onTap: onClose,
+                  child: const SizedBox(
+                    width: 36,
+                    height: 36,
+                    child: Icon(Icons.close, size: 18, color: C.fg68),
+                  ),
+                ),
               ],
             ),
           ),
@@ -233,10 +362,7 @@ class _Panel extends StatelessWidget {
       'effects' => _EffectList(client: client, snapshot: snapshot),
       'audio' => _AudioList(client: client, snapshot: snapshot),
       'settings' => _SettingsList(client: client, snapshot: snapshot),
-      _ => const Padding(
-          padding: EdgeInsets.all(20),
-          child: Text('USB 摄像头\nFlutter 界面，相机引擎沿用参考工程 libausbc。\n765067602@qq.com'),
-        ),
+      _ => const _AboutPanel(),
     };
   }
 }
@@ -251,6 +377,31 @@ String _title(String section) {
     'settings' => '设置',
     _ => '关于',
   };
+}
+
+class _AboutPanel extends StatelessWidget {
+  const _AboutPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+      children: [
+        SvgPicture.asset(
+          'assets/brand/ic_launcher.svg',
+          width: 96,
+          height: 96,
+        ),
+        const SizedBox(height: 16),
+        Text('USB 摄像头', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: C.fg)),
+        const SizedBox(height: 8),
+        const Text(
+          'Flutter 界面，相机引擎沿用参考工程 libausbc。\n765067602@qq.com',
+          style: TextStyle(fontSize: 14, height: 1.45, color: C.fg68),
+        ),
+      ],
+    );
+  }
 }
 
 class _DeviceList extends StatelessWidget {
@@ -527,11 +678,11 @@ class _StatusCluster extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text('${snapshot.frameRate} FPS', style: Theme.of(context).textTheme.labelLarge),
+                Text('${snapshot.frameRate} FPS', style: const TextStyle(fontSize: 13, color: C.fg68)),
                 if (snapshot.isRecording)
                   Text(
                     formatElapsed(snapshot.elapsedSeconds),
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Theme.of(context).colorScheme.error),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: C.error),
                   ),
               ],
             ),
@@ -543,10 +694,9 @@ class _StatusCluster extends StatelessWidget {
 }
 
 class _ConnectionMessage extends StatelessWidget {
-  const _ConnectionMessage({required this.client, required this.color});
+  const _ConnectionMessage({required this.client});
 
   final CameraClient client;
-  final Color color;
 
   @override
   Widget build(BuildContext context) {
@@ -557,19 +707,18 @@ class _ConnectionMessage extends StatelessWidget {
         if (snapshot.connection == 'opened') {
           return const SizedBox.shrink();
         }
-        final text = snapshot.connection == 'error'
-            ? (snapshot.message ?? '相机打开失败')
-            : '等待 USB 摄像头';
-        return Center(child: Text(text, style: TextStyle(color: color)));
+        final text = snapshot.connection == 'error' ? (snapshot.message ?? '相机打开失败') : '等待 USB 摄像头';
+        return Center(child: Text(text, style: const TextStyle(fontSize: 15, color: C.fg68)));
       },
     );
   }
 }
 
 class _CaptureBar extends StatelessWidget {
-  const _CaptureBar({required this.client});
+  const _CaptureBar({required this.client, required this.compact});
 
   final CameraClient client;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -580,34 +729,121 @@ class _CaptureBar extends StatelessWidget {
         return Align(
           alignment: Alignment.bottomCenter,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-            child: Column(
+            padding: EdgeInsets.fromLTRB(16, 0, 16, compact ? 12 : 24),
+            child: Flex(
+              direction: compact ? Axis.horizontal : Axis.vertical,
               mainAxisSize: MainAxisSize.min,
               children: [
-                SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(value: 'photo', label: Text('拍照'), icon: Icon(Icons.photo_camera)),
-                    ButtonSegment(value: 'video', label: Text('录像'), icon: Icon(Icons.videocam)),
-                    ButtonSegment(value: 'audio', label: Text('录音'), icon: Icon(Icons.mic)),
-                  ],
-                  selected: {snapshot.mode},
-                  onSelectionChanged: snapshot.isRecording
-                      ? null
-                      : (selection) => client.selectMode(selection.first),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: const Color(0xCC1C1B18),
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(color: C.border),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(3),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _ModeChip(
+                          label: '拍照',
+                          icon: Icons.photo_camera,
+                          selected: snapshot.mode == 'photo',
+                          enabled: !snapshot.isRecording,
+                          onTap: () => client.selectMode('photo'),
+                        ),
+                        _ModeChip(
+                          label: '录像',
+                          icon: Icons.videocam,
+                          selected: snapshot.mode == 'video',
+                          enabled: !snapshot.isRecording,
+                          onTap: () => client.selectMode('video'),
+                        ),
+                        _ModeChip(
+                          label: '录音',
+                          icon: Icons.mic,
+                          selected: snapshot.mode == 'audio',
+                          enabled: !snapshot.isRecording,
+                          onTap: () => client.selectMode('audio'),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 16),
-                FloatingActionButton.large(
-                  backgroundColor: snapshot.mode == 'photo'
-                      ? Theme.of(context).colorScheme.primaryContainer
-                      : Theme.of(context).colorScheme.errorContainer,
-                  onPressed: client.shutter,
-                  child: Icon(snapshot.isRecording ? Icons.stop : Icons.circle),
+                SizedBox(width: compact ? 16 : 0, height: compact ? 0 : 16),
+                Pressable(
+                  onTap: client.shutter,
+                  child: Semantics(
+                    button: true,
+                    label: '快门',
+                    child: Container(
+                      width: 76,
+                      height: 76,
+                      decoration: BoxDecoration(
+                        color: C.surface,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: snapshot.isRecording ? C.error : C.fg30, width: 2),
+                      ),
+                      alignment: Alignment.center,
+                      child: AnimatedContainer(
+                        duration: revealDuration,
+                        curve: Curves.linear,
+                        width: snapshot.isRecording ? 26 : 52,
+                        height: snapshot.isRecording ? 26 : 52,
+                        decoration: BoxDecoration(
+                          color: snapshot.mode == 'photo' ? C.fg : C.error,
+                          borderRadius: BorderRadius.circular(snapshot.isRecording ? 6 : 26),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
         );
       },
+    );
+  }
+}
+
+class _ModeChip extends StatelessWidget {
+  const _ModeChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = !enabled ? C.fg30 : selected ? C.fg : C.fg48;
+    return Pressable(
+      onTap: enabled ? onTap : null,
+      child: AnimatedContainer(
+        duration: revealDuration,
+        curve: Curves.linear,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? C.surfaceHi : Colors.transparent,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 6),
+            Text(label, style: TextStyle(fontSize: 13, color: color)),
+          ],
+        ),
+      ),
     );
   }
 }

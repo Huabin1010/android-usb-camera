@@ -9,6 +9,12 @@ void main() {
     expect(formatElapsed(-3), '00:00');
   });
 
+  test('keeps a gutter for the frame rate beside the panel', () {
+    expect(overlayPanelWidth(339), lessThanOrEqualTo(339 - 104));
+    expect(overlayPanelWidth(800), 300);
+    expect(captureBarReserve, greaterThanOrEqualTo(180));
+  });
+
   test('keeps the current mode while recording', () {
     expect(switchMode(current: 'video', recording: true, next: 'photo'), isNull);
     expect(switchMode(current: 'photo', recording: false, next: 'photo'), isNull);

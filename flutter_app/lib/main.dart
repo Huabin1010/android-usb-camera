@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'src/camera_client.dart';
 import 'src/camera_screen.dart';
+import 'src/theme.dart';
 
 void main() {
   runApp(const AusbcApp());
@@ -15,10 +16,7 @@ class AusbcApp extends StatelessWidget {
     return MaterialApp(
       title: 'USB 摄像头',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2E5BFF), brightness: Brightness.dark),
-        useMaterial3: true,
-      ),
+      theme: buildTheme(),
       home: const PermissionGate(),
     );
   }
