@@ -22,6 +22,14 @@ void main() {
     expect(switchMode(current: 'photo', recording: false, next: 'other'), isNull);
   });
 
+  test('switches workspace modes and locks them while recording', () {
+    expect(switchWorkspace(current: 'watch', recording: false, next: 'capture'), 'capture');
+    expect(switchWorkspace(current: 'capture', recording: false, next: 'tune'), 'tune');
+    expect(switchWorkspace(current: 'capture', recording: true, next: 'watch'), isNull);
+    expect(switchWorkspace(current: 'watch', recording: false, next: 'watch'), isNull);
+    expect(workspaceLabel('tune'), '调节');
+  });
+
   test('reads a camera snapshot from the platform map', () {
     final snapshot = CameraSnapshot.fromMap({
       'connection': 'opened',

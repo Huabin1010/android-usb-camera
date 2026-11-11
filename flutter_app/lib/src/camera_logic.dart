@@ -6,7 +6,7 @@ String formatElapsed(int seconds) {
   return '$minutes:$rest';
 }
 
-/// Returns the mode to apply, or null when the request should be ignored.
+/// Returns the capture mode to apply, or null when the request should be ignored.
 String? switchMode({
   required String current,
   required bool recording,
@@ -16,6 +16,42 @@ String? switchMode({
     return null;
   }
   if (next != 'photo' && next != 'video' && next != 'audio') {
+    return null;
+  }
+  return next;
+}
+
+const workspaceModeIds = <String>['watch', 'capture', 'tune'];
+
+const workspaceLabels = <String, String>{
+  'watch': '观看',
+  'capture': '拍摄',
+  'tune': '调节',
+};
+
+const workspaceHints = <String, String>{
+  'watch': '只看画面。需要时再打开设备列表切换摄像头。',
+  'capture': '拍照、录像、录音，底部快门可用。',
+  'tune': '画面、视频、效果、音频和分段设置。',
+};
+
+String workspaceLabel(String? id) => workspaceLabels[id] ?? workspaceLabels['watch']!;
+
+String workspaceHint(String? id) => workspaceHints[id] ?? workspaceHints['watch']!;
+
+/// 录像中不允许离开拍摄台，避免收起快门后没法停。
+String? switchWorkspace({
+  required String current,
+  required bool recording,
+  required String next,
+}) {
+  if (current == next) {
+    return null;
+  }
+  if (recording && next != 'capture') {
+    return null;
+  }
+  if (!workspaceModeIds.contains(next)) {
     return null;
   }
   return next;
