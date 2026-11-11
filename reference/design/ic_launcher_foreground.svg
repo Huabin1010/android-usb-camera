@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="AUSBC USB camera mark">
+  <defs>
+    <linearGradient id="body" x1="512" y1="248" x2="512" y2="760" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#D7E0EA"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="360" y1="320" x2="680" y2="640" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F8FAFC"/>
+      <stop offset="0.45" stop-color="#CBD5E1"/>
+      <stop offset="1" stop-color="#64748B"/>
+    </linearGradient>
+    <radialGradient id="glass" cx="440" cy="400" r="210" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F0F9FF"/>
+      <stop offset="0.18" stop-color="#7DD3FC"/>
+      <stop offset="0.48" stop-color="#0284C7"/>
+      <stop offset="0.78" stop-color="#075985"/>
+      <stop offset="1" stop-color="#082F49"/>
+    </radialGradient>
+    <linearGradient id="tongue" x1="512" y1="668" x2="512" y2="760" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#E2E8F0"/>
+      <stop offset="1" stop-color="#94A3B8"/>
+    </linearGradient>
+    <filter id="markShadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="18" stdDeviation="16" flood-color="#042F2E" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+
+  <g transform="translate(512 512) scale(0.92) translate(-512 -512)">
+    <g filter="url(#markShadow)">
+      <rect x="392" y="228" width="240" height="92" rx="32" fill="url(#body)"/>
+      <rect x="208" y="286" width="608" height="372" rx="92" fill="url(#body)"/>
+      <rect x="352" y="612" width="320" height="176" rx="28" fill="url(#body)"/>
+    </g>
+
+    <rect x="448" y="252" width="128" height="22" rx="11" fill="#0F172A" opacity="0.18"/>
+
+    <circle cx="742" cy="392" r="18" fill="#22D3EE"/>
+    <circle cx="742" cy="392" r="8" fill="#ECFEFF"/>
+
+    <circle cx="512" cy="472" r="156" fill="#0F172A"/>
+    <circle cx="512" cy="472" r="138" fill="url(#ring)"/>
+    <circle cx="512" cy="472" r="122" fill="url(#glass)"/>
+    <circle cx="512" cy="472" r="86" fill="none" stroke="#082F49" stroke-opacity="0.35" stroke-width="10"/>
+    <circle cx="512" cy="472" r="46" fill="#041525"/>
+    <circle cx="496" cy="456" r="16" fill="#164E63" opacity="0.9"/>
+    <ellipse cx="452" cy="408" rx="46" ry="26" fill="#FFFFFF" opacity="0.72" transform="rotate(-32 452 408)"/>
+    <circle cx="478" cy="436" r="10" fill="#FFFFFF" opacity="0.55"/>
+
+    <rect x="388" y="668" width="248" height="92" rx="16" fill="#0B1220"/>
+    <rect x="404" y="668" width="216" height="50" rx="10" fill="url(#tongue)"/>
+    <rect x="448" y="684" width="36" height="10" rx="3" fill="#334155"/>
+    <rect x="504" y="684" width="36" height="10" rx="3" fill="#334155"/>
+    <rect x="560" y="684" width="36" height="10" rx="3" fill="#334155"/>
+  </g>
+</svg>

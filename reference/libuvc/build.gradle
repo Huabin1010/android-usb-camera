@@ -1,0 +1,94 @@
+plugins {
+    alias(libs.plugins.android.library)
+}
+
+import org.apache.tools.ant.taskdefs.condition.Os
+
+android {
+    namespace "com.jiangdg.uvccamera"
+    compileSdk libs.versions.compileSdk.get().toInteger()
+    ndkVersion libs.versions.ndk.get()
+
+    defaultConfig {
+        minSdk libs.versions.minSdk.get().toInteger()
+        targetSdk libs.versions.targetSdk.get().toInteger()
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ["src/main/libs"]
+        }
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+        disable "MissingTranslation"
+    }
+}
+
+def ndkBuildExecutable() {
+    def ndkDir = android.ndkDirectory?.absolutePath
+    if (ndkDir == null || ndkDir.isEmpty()) {
+        ndkDir = System.getenv("ANDROID_NDK_HOME") ?: System.getenv("NDK_HOME")
+    }
+    if (ndkDir == null || ndkDir.isEmpty()) {
+        def properties = new Properties()
+        def local = rootProject.file("local.properties")
+        if (local.exists()) {
+            local.withInputStream { properties.load(it) }
+            ndkDir = properties.getProperty("ndk.dir")
+        }
+    }
+    if (ndkDir == null || ndkDir.isEmpty()) {
+        throw new GradleException("NDK not found. Install an NDK or set ANDROID_NDK_HOME.")
+    }
+    def executable = new File(ndkDir, Os.isFamily(Os.FAMILY_WINDOWS) ? "ndk-build.cmd" : "ndk-build")
+    if (!executable.exists()) {
+        throw new GradleException("ndk-build not found at ${executable.absolutePath}")
+    }
+    return executable.absolutePath
+}
+
+task ndkBuild(type: Exec) {
+    description = "Compile JNI source via NDK"
+    def moduleDir = file("src/main")
+    commandLine "true"
+    doFirst {
+        commandLine ndkBuildExecutable(), "-j8", "-C", moduleDir.absolutePath
+    }
+}
+
+task ndkClean(type: Exec) {
+    description = "Clean JNI libraries"
+    def moduleDir = file("src/main")
+    commandLine "true"
+    doFirst {
+        commandLine ndkBuildExecutable(), "clean", "-C", moduleDir.absolutePath
+    }
+}
+
+tasks.named("preBuild").configure {
+    dependsOn(ndkBuild)
+}
+
+tasks.named("clean").configure {
+    dependsOn(ndkClean)
+}
+
+dependencies {
+    implementation libs.appcompat
+    implementation libs.xlog
+}

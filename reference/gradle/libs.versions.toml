@@ -1,0 +1,51 @@
+[versions]
+agp = "8.7.3"
+kotlin = "2.0.21"
+compileSdk = "35"
+minSdk = "19"
+appMinSdk = "24"
+targetSdk = "35"
+composeBom = "2024.12.01"
+coreKtx = "1.15.0"
+lifecycle = "2.8.7"
+activityCompose = "1.9.3"
+coroutines = "1.9.0"
+coil = "2.7.0"
+mmkv = "1.3.9"
+splash = "1.0.1"
+appcompat = "1.7.0"
+material = "1.12.0"
+xlog = "1.11.0"
+bugly = "3.4.4"
+buglyNative = "3.9.0"
+junit = "4.13.2"
+ndk = "27.0.12077973"
+
+[libraries]
+compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
+compose-ui = { module = "androidx.compose.ui:ui" }
+compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
+compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+compose-material3 = { module = "androidx.compose.material3:material3" }
+compose-icons = { module = "androidx.compose.material:material-icons-extended" }
+activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
+core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
+core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "splash" }
+lifecycle-runtime = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycle" }
+lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
+coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
+coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil" }
+appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
+material = { module = "com.google.android.material:material", version.ref = "material" }
+xlog = { module = "com.elvishew:xlog", version.ref = "xlog" }
+mmkv = { module = "com.tencent:mmkv", version.ref = "mmkv" }
+bugly = { module = "com.tencent.bugly:crashreport", version.ref = "bugly" }
+bugly-native = { module = "com.tencent.bugly:nativecrashreport", version.ref = "buglyNative" }
+junit = { module = "junit:junit", version.ref = "junit" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

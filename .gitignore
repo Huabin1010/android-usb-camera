@@ -1,0 +1,26 @@
+tmp/
+
+# Gradle / Android
+.gradle/
+.kotlin/
+**/build/
+**/.cxx/
+**/.externalNativeBuild/
+**/local.properties
+**/src/main/obj/
+**/src/main/libs/
+*.iml
+.idea/
+.DS_Store
+captures/
+
+# Flutter
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.pub-cache/
+**/.pub/
+**/.run/
+**/coverage/
+*.class
+*.log
