@@ -1,5 +1,5 @@
 import 'dart:math' as math;
-import 'dart:ui' show ImageFilter;
+import 'dart:ui' show DisplayFeatureType, ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -24,6 +24,24 @@ class HoldMenuItem {
   final Widget? leading;
   final bool enabled, checked;
   final int group, maxLines;
+}
+
+/// 侧边挖孔向屏幕内伸进多少。菜单从这一侧展开时要让开，避免画在前置摄像头上。
+double _cutoutClearance(MediaQueryData mq, {required bool start}) {
+  var edge = start ? mq.viewPadding.left : mq.viewPadding.right;
+  final size = mq.size;
+  for (final feature in mq.displayFeatures) {
+    if (feature.type != DisplayFeatureType.cutout) continue;
+    final bounds = feature.bounds;
+    final onThisSide = start
+        ? bounds.center.dx < size.width / 2
+        : bounds.center.dx > size.width / 2;
+    if (!onThisSide) continue;
+    final into = start ? bounds.right : size.width - bounds.left;
+    if (into <= 0 || into > size.width * 0.45) continue;
+    edge = math.max(edge, into);
+  }
+  return edge;
 }
 
 /// iOS 下拉菜单式按钮：
@@ -64,7 +82,7 @@ class HoldMenu extends StatefulWidget {
   /// 菜单右边缘对齐按钮右边缘（右上角按钮展开时用）。
   final bool endAligned;
 
-  /// 菜单贴在屏幕左缘，从左侧向右展开（横屏左侧按钮用）。
+  /// 菜单从屏幕左侧向右展开（横屏左侧按钮用），并避开挖孔。
   final bool fromScreenStart;
 
   /// 菜单贴在屏幕右缘，从右侧向左展开（横屏右侧按钮用）。
@@ -232,12 +250,21 @@ class _HoldMenuState extends State<HoldMenu>
     final mq = MediaQuery.of(overlayCtx);
     final screen = mq.size;
     final margin = 8.0;
-    final width = math.min(widget.width, screen.width - margin * 2);
+    // 横屏前置摄像头在侧边挖孔上。菜单让开挖孔，避免卡片被镜头挡住一块。
+    final startClear = _cutoutClearance(mq, start: true);
+    final endClear = _cutoutClearance(mq, start: false);
+    final startPad = widget.fromScreenStart
+        ? math.max(margin, startClear + margin)
+        : margin;
+    final endPad = widget.fromScreenEnd
+        ? math.max(margin, endClear + margin)
+        : margin;
+    final width = math.min(widget.width, screen.width - startPad - endPad);
     final pinned = widget.fromScreenStart || widget.fromScreenEnd;
     final x = widget.fromScreenEnd
-        ? screen.width - width - margin
+        ? screen.width - width - endPad
         : widget.fromScreenStart
-        ? margin
+        ? startPad
         : widget.centered
         ? origin.dx + btn.width / 2 - width / 2
         : widget.endAligned
@@ -301,14 +328,14 @@ class _HoldMenuState extends State<HoldMenu>
         ),
         if (widget.fromScreenEnd)
           Positioned(
-            right: margin,
+            right: endPad,
             top: mq.padding.top + margin,
             bottom: mq.padding.bottom + margin,
             child: Align(alignment: Alignment.centerRight, child: card),
           )
         else if (widget.fromScreenStart)
           Positioned(
-            left: margin,
+            left: startPad,
             top: mq.padding.top + margin,
             bottom: mq.padding.bottom + margin,
             child: Align(alignment: Alignment.centerLeft, child: card),

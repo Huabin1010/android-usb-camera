@@ -121,7 +121,7 @@ class _CameraScreenState extends State<CameraScreen> {
   Widget build(BuildContext context) {
     final showCapture = _workspace == 'capture';
     final showTopChrome = _workspace != 'watch' || _watchChrome;
-    final canDrawer = _workspace == 'tune';
+    final canDrawer = _workspace == 'tune' || _workspace == 'capture';
     final drawerOpen = canDrawer && _drawerOpen;
     final sectionOpen = canDrawer && _section != null;
 
@@ -465,20 +465,71 @@ class _LandscapeRail extends StatelessWidget {
     final inset = ((side - slot) / 2).clamp(2.0, side);
     // 左右用同一间距。中间空开，避开左侧摄像头。
     const gap = 48.0;
-    Widget column(List<Widget> children) {
+    final shutter = (side - 8).clamp(56.0, 72.0);
+    // 非拍摄时右侧是模式、音频、工具，整列垂直居中。
+    // 切到拍摄后模式按钮留在这一列原来的那一格，快门跟它对齐中线。
+    final anchorCount =
+        2 + (onToggleDrawer != null ? 1 : 0) + (onHideWatch != null ? 1 : 0);
+    final anchorHeight = anchorCount * slot + (anchorCount - 1) * gap;
+    final modeTop = ((size.height - anchorHeight) / 2).clamp(0.0, size.height);
+    Widget column(List<Widget> children, {double spacing = gap}) {
       return SizedBox(
         width: slot,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             for (var i = 0; i < children.length; i++) ...[
-              if (i > 0) const SizedBox(height: gap),
+              if (i > 0) SizedBox(height: spacing),
               children[i],
             ],
           ],
         ),
       );
     }
+
+    final resolution = _PreviewStatusMenu(
+      client: client,
+      presets: presets,
+      iconOnly: true,
+      fromScreenStart: true,
+      slot: slot,
+    );
+    final devices = _DevicesChip(
+      client: client,
+      iconOnly: true,
+      fromScreenStart: true,
+      slot: slot,
+    );
+    final workspaceChip = _WorkspaceChip(
+      workspace: workspace,
+      onSelect: onSelectWorkspace,
+      iconOnly: true,
+      fromScreenEnd: true,
+      slot: slot,
+    );
+    final audio = _AudioChromeButton(
+      client: client,
+      fromScreenEnd: !showCapture,
+      fromScreenStart: showCapture,
+      size: slot,
+    );
+    final tools = [
+      if ((showDrawerToggle || showCapture) && onToggleDrawer != null)
+        CircleBtn(
+          icon: Icons.tune,
+          tooltip: context.l10n.tools,
+          active: drawerOpen,
+          size: slot,
+          onTap: onToggleDrawer,
+        ),
+      if (onHideWatch != null)
+        CircleBtn(
+          icon: Icons.visibility_off_outlined,
+          tooltip: context.l10n.hideControls,
+          size: slot,
+          onTap: onHideWatch,
+        ),
+    ];
 
     return Positioned.fill(
       child: Stack(
@@ -487,67 +538,41 @@ class _LandscapeRail extends StatelessWidget {
             left: inset,
             top: 0,
             bottom: 0,
-            child: Center(
-              child: column([
-                _PreviewStatusMenu(
-                  client: client,
-                  presets: presets,
-                  iconOnly: true,
-                  fromScreenStart: true,
-                  slot: slot,
-                ),
-                _DevicesChip(
-                  client: client,
-                  iconOnly: true,
-                  fromScreenStart: true,
-                  slot: slot,
-                ),
-              ]),
-            ),
+            width: slot,
+            child: showCapture
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [audio, resolution, devices, ...tools],
+                  )
+                : Center(child: column([resolution, devices])),
           ),
-          Positioned(
-            right: inset,
-            top: 0,
-            bottom: 0,
-            child: Center(
-              child: column([
-                _WorkspaceChip(
-                  workspace: workspace,
-                  onSelect: onSelectWorkspace,
-                  iconOnly: true,
-                  fromScreenEnd: true,
-                  slot: slot,
-                ),
-                _AudioChromeButton(
-                  client: client,
-                  fromScreenEnd: true,
-                  size: slot,
-                ),
-                if (showDrawerToggle && onToggleDrawer != null)
-                  CircleBtn(
-                    icon: Icons.tune,
-                    tooltip: context.l10n.tools,
-                    active: drawerOpen,
-                    size: slot,
-                    onTap: onToggleDrawer,
-                  ),
-                if (onHideWatch != null)
-                  CircleBtn(
-                    icon: Icons.visibility_off_outlined,
-                    tooltip: context.l10n.hideControls,
-                    size: slot,
-                    onTap: onHideWatch,
-                  ),
-                if (showCapture)
-                  _CaptureBar(
-                    client: client,
-                    compact: true,
-                    rail: true,
-                    slot: slot,
-                  ),
-              ]),
+          if (!showCapture)
+            Positioned(
+              right: inset,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: column([workspaceChip, audio, ...tools]),
+              ),
             ),
-          ),
+          if (showCapture) ...[
+            Positioned(
+              top: modeTop,
+              right: inset,
+              child: workspaceChip,
+            ),
+            Positioned(
+              right: inset + (slot - shutter) / 2,
+              bottom: 16,
+              child: _CaptureBar(
+                client: client,
+                compact: true,
+                rail: true,
+                slot: slot,
+                shutterSize: shutter,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -580,11 +605,13 @@ Widget _slotButton({
 class _AudioChromeButton extends StatelessWidget {
   const _AudioChromeButton({
     required this.client,
+    this.fromScreenStart = false,
     this.fromScreenEnd = false,
     this.size = 36,
   });
 
   final CameraClient client;
+  final bool fromScreenStart;
   final bool fromScreenEnd;
   final double size;
 
@@ -602,7 +629,8 @@ class _AudioChromeButton extends StatelessWidget {
           child: HoldMenu(
             // 贴右上角展开：宽度收窄，避免被屏幕夹到左侧。
             width: 208,
-            endAligned: !fromScreenEnd,
+            endAligned: fromScreenEnd,
+            fromScreenStart: fromScreenStart,
             fromScreenEnd: fromScreenEnd,
             header: l10n.audioSource,
             items: [
@@ -850,7 +878,7 @@ class _WorkspaceChip extends StatelessWidget {
         builder: (context, open, pressed) {
           if (iconOnly) {
             return _slotButton(
-              icon: _workspaceIcon(workspace),
+              icon: Icons.cameraswitch_outlined,
               size: slot,
               open: open,
               tooltip: l10n.workspaceLabel(workspace),
@@ -1139,7 +1167,8 @@ class _PreviewState extends State<_Preview> {
             top: top,
             width: viewW,
             height: viewH,
-            child: _textureId < 0
+            // 未开预览时不要铺纹理：空纹理是一块黑，会盖住浅色背景。
+            child: !live
                 ? const SizedBox.expand()
                 : Texture(
                     textureId: _textureId,
@@ -2300,12 +2329,14 @@ class _CaptureBar extends StatelessWidget {
     required this.compact,
     this.rail = false,
     this.slot,
+    this.shutterSize,
   });
 
   final CameraClient client;
   final bool compact;
   final bool rail;
   final double? slot;
+  final double? shutterSize;
 
   @override
   Widget build(BuildContext context) {
@@ -2321,9 +2352,7 @@ class _CaptureBar extends StatelessWidget {
               ? Axis.horizontal
               : Axis.vertical,
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: rail
-              ? CrossAxisAlignment.end
-              : CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             DecoratedBox(
               decoration: BoxDecoration(
@@ -2336,9 +2365,7 @@ class _CaptureBar extends StatelessWidget {
                 child: Flex(
                   direction: rail ? Axis.vertical : Axis.horizontal,
                   mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: rail
-                      ? CrossAxisAlignment.end
-                      : CrossAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     _CaptureChip(
                       label: l10n.modePhoto,
@@ -2375,8 +2402,8 @@ class _CaptureBar extends StatelessWidget {
                 button: true,
                 label: l10n.shutter,
                 child: Container(
-                  width: rail ? (slot ?? 44) : 76,
-                  height: rail ? (slot ?? 44) : 76,
+                  width: rail ? (shutterSize ?? slot ?? 44) : 76,
+                  height: rail ? (shutterSize ?? slot ?? 44) : 76,
                   decoration: BoxDecoration(
                     color: C.surface,
                     shape: BoxShape.circle,
@@ -2391,10 +2418,10 @@ class _CaptureBar extends StatelessWidget {
                     curve: Curves.linear,
                     width: snapshot.isRecording
                         ? (rail ? 12 : 26)
-                        : (rail ? (slot ?? 44) * 0.62 : 52),
+                        : (rail ? (shutterSize ?? slot ?? 44) * 0.62 : 52),
                     height: snapshot.isRecording
                         ? (rail ? 12 : 26)
-                        : (rail ? (slot ?? 44) * 0.62 : 52),
+                        : (rail ? (shutterSize ?? slot ?? 44) * 0.62 : 52),
                     decoration: BoxDecoration(
                       color: snapshot.mode == 'photo' ? C.fg : C.error,
                       borderRadius: BorderRadius.circular(
