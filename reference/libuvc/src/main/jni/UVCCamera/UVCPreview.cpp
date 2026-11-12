@@ -23,6 +23,7 @@
 */
 
 #include <stdlib.h>
+#include <math.h>
 #include <linux/time.h>
 #include <unistd.h>
 
@@ -67,6 +68,7 @@ UVCPreview::UVCPreview(uvc_device_handle_t *devh)
 	previewFormat(WINDOW_FORMAT_RGBA_8888),
 	mIsRunning(false),
 	mIsCapturing(false),
+	mHasBand(false),
 	captureQueu(NULL),
 	mFrameCallbackObj(NULL),
 	mFrameCallbackFunc(NULL),
@@ -533,8 +535,63 @@ int UVCPreview::prepare_preview(uvc_stream_ctrl_t *ctrl) {
 	RETURN(result, int);
 }
 
+static void yuyv_thirds(const uvc_frame_t *frame, int y0, int rows, float out[3]) {
+	const int width = frame->width;
+	const int height = frame->height;
+	out[0] = out[1] = out[2] = 0.f;
+	if (!frame->data || width < 3 || height < 1 || rows < 1) return;
+	if (y0 < 0) y0 = 0;
+	if (y0 >= height) return;
+	if (y0 + rows > height) rows = height - y0;
+	const int step = frame->step > 0 ? frame->step : width * 2;
+	const uint8_t *base = (const uint8_t *)frame->data;
+	const int x1 = width / 3;
+	const int x2 = (2 * width) / 3;
+	unsigned long sum[3] = {0, 0, 0};
+	unsigned long count[3] = {0, 0, 0};
+	for (int y = y0; y < y0 + rows; y += 2) {
+		const uint8_t *row = base + (size_t)y * step;
+		for (int x = 0; x < width; x += 8) {
+			const int bucket = x < x1 ? 0 : (x < x2 ? 1 : 2);
+			sum[bucket] += row[x * 2];
+			count[bucket]++;
+		}
+	}
+	for (int i = 0; i < 3; i++) {
+		if (count[i]) out[i] = (float)sum[i] / (float)count[i];
+	}
+}
+
+bool UVCPreview::isTornYuyv(uvc_frame_t *frame) {
+	if (!frame || frame->frame_format != UVC_FRAME_FORMAT_YUYV || frame->height < 32) {
+		return false;
+	}
+	const int band = frame->height / 10;
+	float top[3], bot[3];
+	yuyv_thirds(frame, 0, band, top);
+	yuyv_thirds(frame, frame->height - band, band, bot);
+	bool torn = false;
+	if (mHasBand) {
+		const float top_delta = (fabsf(top[0] - mTopBand[0]) + fabsf(top[1] - mTopBand[1]) + fabsf(top[2] - mTopBand[2])) / 3.f;
+		const float d0 = bot[0] - mBotBand[0];
+		const float d1 = bot[1] - mBotBand[1];
+		const float d2 = bot[2] - mBotBand[2];
+		const bool same_dir = (d0 > 0.f && d1 > 0.f && d2 > 0.f) || (d0 < 0.f && d1 < 0.f && d2 < 0.f);
+		const float min_bot = fminf(fabsf(d0), fminf(fabsf(d1), fabsf(d2)));
+		/* Top unchanged, all three bottom thirds shift together: a half-updated frame. */
+		torn = top_delta < 4.f && same_dir && min_bot > 12.f;
+	}
+	if (!torn) {
+		mTopBand[0] = top[0]; mTopBand[1] = top[1]; mTopBand[2] = top[2];
+		mBotBand[0] = bot[0]; mBotBand[1] = bot[1]; mBotBand[2] = bot[2];
+		mHasBand = true;
+	}
+	return torn;
+}
+
 void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 	ENTER();
+	mHasBand = false;
 
 	uvc_frame_t *frame = NULL;
 	uvc_frame_t *frame_mjpeg = NULL;
@@ -560,6 +617,10 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 					frame = get_frame(frame_mjpeg->width * frame_mjpeg->height * 2);
 					result = uvc_mjpeg2yuyv(frame_mjpeg, frame);   // MJPEG => yuyv
 					recycle_frame(frame_mjpeg);
+					if (LIKELY(!result) && isTornYuyv(frame)) {
+						LOGW("drop torn MJPEG frame %dx%d", frame->width, frame->height);
+						result = UVC_ERROR_OTHER;
+					}
 					if (LIKELY(!result)) {
 						frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
 						addCaptureFrame(frame);
@@ -573,6 +634,11 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 			for ( ; LIKELY(isRunning()) ; ) {
 				frame = waitPreviewFrame();
 				if (LIKELY(frame)) {
+					if (isTornYuyv(frame)) {
+						LOGW("drop torn YUYV frame %dx%d", frame->width, frame->height);
+						recycle_frame(frame);
+						continue;
+					}
 					frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
 					addCaptureFrame(frame);
 				}

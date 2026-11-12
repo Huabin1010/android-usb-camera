@@ -728,12 +728,9 @@ static void _uvc_process_payload(uvc_stream_handle_t *strmh, const uint8_t *payl
 		header_info = payload[1];
 
 		if (UNLIKELY(header_info & UVC_STREAM_ERR)) {
-//			strmh->bfh_err |= UVC_STREAM_ERR;
-			UVC_DEBUG("bad packet: error bit set");
-			libusb_clear_halt(strmh->devh->usb_devh, strmh->stream_if->bEndpointAddress);
-//			uvc_vc_get_error_code(strmh->devh, &vc_error_code, UVC_GET_CUR);
-			uvc_vs_get_error_code(strmh->devh, &vs_error_code, UVC_GET_CUR);
-//			return;
+			/* Drop the whole frame. clear_halt / error-code control transfers
+			 * on this path stall the pipe and splice the next JPEG in half. */
+			strmh->bfh_err |= UVC_STREAM_ERR;
 		}
 
 		if ((strmh->fid != (header_info & UVC_STREAM_FID)) && strmh->got_bytes) {
@@ -830,9 +827,6 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 		if (UNLIKELY(pkt->status != 0)) {
 			MARK("bad packet:status=%d,actual_length=%d", pkt->status, pkt->actual_length);
 			strmh->bfh_err |= UVC_STREAM_ERR;
-			libusb_clear_halt(strmh->devh->usb_devh, strmh->stream_if->bEndpointAddress);
-//			uvc_vc_get_error_code(strmh->devh, &vc_error_code, UVC_GET_CUR);
-//			uvc_vs_get_error_code(strmh->devh, &vs_error_code, UVC_GET_CUR);
 			continue;
 		}
 
@@ -868,11 +862,11 @@ static inline void _uvc_process_payload_iso(uvc_stream_handle_t *strmh, struct l
 			if (LIKELY(check_header)) {
 				header_info = pktbuf[1];
 				if (UNLIKELY(header_info & UVC_STREAM_ERR)) {
-//					strmh->bfh_err |= UVC_STREAM_ERR;
+					/* Skip this packet and discard the frame. Do not clear_halt
+					 * or query the error code here — that stalls isochronous
+					 * streaming and the rest of the JPEG is drawn torn. */
+					strmh->bfh_err |= UVC_STREAM_ERR;
 					MARK("bad packet:status=0x%2x", header_info);
-					libusb_clear_halt(strmh->devh->usb_devh, strmh->stream_if->bEndpointAddress);
-//					uvc_vc_get_error_code(strmh->devh, &vc_error_code, UVC_GET_CUR);
-					uvc_vs_get_error_code(strmh->devh, &vs_error_code, UVC_GET_CUR);
 					continue;
 				}
 #ifdef USE_EOF
@@ -1093,9 +1087,6 @@ static void _uvc_iso_callback(struct libusb_transfer *transfer) {
 					if (UNLIKELY(header_info & UVC_STREAM_ERR)) {
 						strmh->bfh_err |= UVC_STREAM_ERR;
 						MARK("bad packet");
-//						libusb_clear_halt(strmh->devh->usb_devh, strmh->stream_if->bEndpointAddress);
-						uvc_vc_get_error_code(strmh->devh, &vc_error_code, UVC_GET_CUR);
-						uvc_vs_get_error_code(strmh->devh, &vs_error_code, UVC_GET_CUR);
 						continue;
 					}
 #ifdef USE_EOF

@@ -102,6 +102,11 @@ private:
 	int prepare_preview(uvc_stream_ctrl_t *ctrl);
 	void do_preview(uvc_stream_ctrl_t *ctrl);
 	uvc_frame_t *draw_preview_one(uvc_frame_t *frame, ANativeWindow **window, convFunc_t func, int pixelBytes);
+	/** True when the lower half jumped together while the top stayed put — a torn JPEG. */
+	bool isTornYuyv(uvc_frame_t *frame);
+	bool mHasBand;
+	float mTopBand[3];
+	float mBotBand[3];
 //
 	void addCaptureFrame(uvc_frame_t *frame);
 	uvc_frame_t *waitCaptureFrame();
