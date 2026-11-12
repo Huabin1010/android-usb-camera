@@ -26,8 +26,10 @@ class CameraSnapshot {
     required this.frameRate,
     required this.devices,
     required this.resolutions,
+    required this.frameRates,
     required this.previewWidth,
     required this.previewHeight,
+    required this.previewFps,
     required this.previewFormat,
     required this.audioSource,
     required this.rotate,
@@ -54,8 +56,10 @@ class CameraSnapshot {
         frameRate = 0,
         devices = const [],
         resolutions = const [],
+        frameRates = const [15, 24, 30, 60],
         previewWidth = 640,
         previewHeight = 480,
+        previewFps = 30,
         previewFormat = 'mjpeg',
         audioSource = 'system',
         rotate = 'ANGLE_0',
@@ -80,8 +84,10 @@ class CameraSnapshot {
   final int frameRate;
   final List<UsbDeviceItem> devices;
   final List<ResolutionOption> resolutions;
+  final List<int> frameRates;
   final int previewWidth;
   final int previewHeight;
+  final int previewFps;
   final String previewFormat;
   final String audioSource;
   final String rotate;
@@ -109,15 +115,17 @@ class CameraSnapshot {
       devices: _maps(raw['devices']).map((item) {
         return UsbDeviceItem(
           id: _asInt(item['id']),
-          name: item['name'] as String? ?? 'USB 摄像头',
+          name: item['name'] as String? ?? 'USB camera',
           summary: item['summary'] as String? ?? '',
         );
       }).toList(),
       resolutions: _maps(raw['resolutions']).map((item) {
         return ResolutionOption(width: _asInt(item['width']), height: _asInt(item['height']));
       }).toList(),
+      frameRates: _ints(raw['frameRates']).isEmpty ? const [15, 24, 30, 60] : _ints(raw['frameRates']),
       previewWidth: _asInt(raw['previewWidth'], 640),
       previewHeight: _asInt(raw['previewHeight'], 480),
+      previewFps: _asInt(raw['previewFps'], 30),
       previewFormat: raw['previewFormat'] as String? ?? 'mjpeg',
       audioSource: raw['audioSource'] as String? ?? 'system',
       rotate: raw['rotate'] as String? ?? 'ANGLE_0',
@@ -152,6 +160,13 @@ List<String> _strings(Object? value) {
     return const [];
   }
   return value.whereType<String>().toList();
+}
+
+List<int> _ints(Object? value) {
+  if (value is! List) {
+    return const [];
+  }
+  return value.whereType<num>().map((item) => item.toInt()).toList();
 }
 
 Map<String, int> _intMap(Object? value) {

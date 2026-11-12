@@ -23,22 +23,6 @@ String? switchMode({
 
 const workspaceModeIds = <String>['watch', 'capture', 'tune'];
 
-const workspaceLabels = <String, String>{
-  'watch': '观看',
-  'capture': '拍摄',
-  'tune': '调节',
-};
-
-const workspaceHints = <String, String>{
-  'watch': '只看画面。需要时再打开设备列表切换摄像头。',
-  'capture': '拍照、录像、录音，底部快门可用。',
-  'tune': '画面、视频、效果、音频和分段设置。',
-};
-
-String workspaceLabel(String? id) => workspaceLabels[id] ?? workspaceLabels['watch']!;
-
-String workspaceHint(String? id) => workspaceHints[id] ?? workspaceHints['watch']!;
-
 /// 录像中不允许离开拍摄台，避免收起快门后没法停。
 String? switchWorkspace({
   required String current,
@@ -57,25 +41,14 @@ String? switchWorkspace({
   return next;
 }
 
-const imageLabels = <String, String>{
-  'brightness': '亮度',
-  'contrast': '对比度',
-  'saturation': '饱和度',
-  'hue': '色调',
-  'gain': '增益',
-  'gamma': '伽马',
-  'sharpness': '锐度',
-  'zoom': '变焦',
-};
-
-const rotateOptions = <String, String>{
-  'ANGLE_0': '0°',
-  'ANGLE_90': '90°',
-  'ANGLE_180': '180°',
-  'ANGLE_270': '270°',
-  'FLIP_UP_DOWN': '上下翻转',
-  'FLIP_LEFT_RIGHT': '左右翻转',
-};
+const rotateOptionIds = <String>[
+  'ANGLE_0',
+  'ANGLE_90',
+  'ANGLE_180',
+  'ANGLE_270',
+  'FLIP_UP_DOWN',
+  'FLIP_LEFT_RIGHT',
+];
 
 const segmentOptions = <int>[0, 1, 5, 10, 30];
 
@@ -90,4 +63,14 @@ double overlayPanelWidth(double previewWidth) {
     return (previewWidth * 0.62).clamp(0, 300);
   }
   return room.clamp(180, 300);
+}
+
+String formatPreviewLabel({
+  required int width,
+  required int height,
+  required String format,
+  required int fps,
+}) {
+  final fmt = format.toUpperCase();
+  return '$width×$height · $fmt · ${fps}fps';
 }

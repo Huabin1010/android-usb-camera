@@ -28,6 +28,8 @@ import com.jiangdg.ausbc.render.env.RotateType
 class CameraRequest private constructor() {
     var previewWidth: Int = DEFAULT_WIDTH
     var previewHeight: Int = DEFAULT_HEIGHT
+    /** Target preview FPS. Passed to UVC as max_fps when opening the stream. */
+    var previewFps: Int = DEFAULT_FPS
     var renderMode: RenderMode = RenderMode.OPENGL
     var isAspectRatioShow: Boolean = true
     var isRawPreviewData: Boolean = false
@@ -84,6 +86,17 @@ class CameraRequest private constructor() {
          */
         fun setPreviewHeight(height: Int): Builder {
             mRequest.previewHeight = height
+            return this
+        }
+
+        /**
+         * Set preview FPS
+         *
+         * @param fps target frames per second, default is 30
+         * @return [Builder]
+         */
+        fun setPreviewFps(fps: Int): Builder {
+            mRequest.previewFps = fps.coerceIn(1, 120)
             return this
         }
 
@@ -239,5 +252,6 @@ class CameraRequest private constructor() {
     companion object {
         private const val DEFAULT_WIDTH = 640
         private const val DEFAULT_HEIGHT = 480
+        private const val DEFAULT_FPS = 30
     }
 }

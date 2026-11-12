@@ -237,6 +237,7 @@ class CameraSession(
         camera.getCameraRequest()?.apply {
             previewWidth = next.previewWidth
             previewHeight = next.previewHeight
+            previewFps = next.previewFps
             previewFormat = next.previewFormat
             audioSource = next.audioSource
             defaultRotateType = next.defaultRotateType
@@ -294,6 +295,10 @@ class CameraSession(
     fun getDefaultEffect() = peekCamera()?.getDefaultEffect()
 
     fun getAllPreviewSizes(aspectRatio: Double? = null) = peekCamera()?.getAllPreviewSizes(aspectRatio)
+
+    fun getSupportedFrameRates(width: Int, height: Int): List<Int> {
+        return (peekCamera() as? CameraUVC)?.getSupportedFrameRates(width, height).orEmpty()
+    }
 
     fun getCurrentPreviewSize(): PreviewSize? {
         return peekCamera()?.getCameraRequest()?.let { PreviewSize(it.previewWidth, it.previewHeight) }

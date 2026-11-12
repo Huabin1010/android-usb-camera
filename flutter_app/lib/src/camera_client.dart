@@ -42,6 +42,8 @@ class CameraClient extends ChangeNotifier {
     return _call('selectResolution', {'width': width, 'height': height});
   }
 
+  Future<void> selectFps(int fps) => _call('selectFps', {'fps': fps});
+
   Future<void> selectFormat(String format) => _call('selectFormat', {'format': format});
 
   Future<void> selectRotate(String rotate) => _call('selectRotate', {'rotate': rotate});

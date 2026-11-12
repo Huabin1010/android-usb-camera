@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'l10n_ext.dart';
+
 /// 色值对齐 cursor-remote：暖深灰底、半透明白字、细描边，按下只变淡。
 class C {
   static const bg = Color(0xFF1C1B18);
@@ -201,7 +203,7 @@ Future<R?> showAppSheet<R>(
                   children: [
                     Expanded(child: Text(title, style: T.sheetTitle)),
                     IconButton(
-                      tooltip: '关闭',
+                      tooltip: AppLocalizations.of(ctx).close,
                       visualDensity: VisualDensity.compact,
                       icon: const Icon(Icons.close, size: 18, color: C.fg48),
                       onPressed: () => Navigator.of(ctx).maybePop(),
@@ -222,6 +224,7 @@ class SheetRow extends StatelessWidget {
     super.key,
     required this.title,
     this.subtitle,
+    this.subtitleMaxLines = 2,
     this.trailing,
     this.leading,
     this.onTap,
@@ -230,6 +233,7 @@ class SheetRow extends StatelessWidget {
 
   final String title;
   final String? subtitle;
+  final int subtitleMaxLines;
   final Widget? trailing;
   final Widget? leading;
   final VoidCallback? onTap;
@@ -254,7 +258,12 @@ class SheetRow extends StatelessWidget {
                   Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: T.row),
                   if (subtitle != null) ...[
                     const SizedBox(height: 2),
-                    Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis, style: T.small),
+                    Text(
+                      subtitle!,
+                      maxLines: subtitleMaxLines,
+                      overflow: TextOverflow.ellipsis,
+                      style: T.small,
+                    ),
                   ],
                 ],
               ),

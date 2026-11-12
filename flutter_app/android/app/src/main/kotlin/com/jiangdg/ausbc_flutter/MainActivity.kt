@@ -3,6 +3,8 @@ package com.jiangdg.ausbc_flutter
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Bundle
+import android.view.WindowManager
 import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -12,6 +14,11 @@ import io.flutter.plugin.common.StandardMessageCodec
 
 class MainActivity : FlutterActivity() {
     private var permissionResult: MethodChannel.Result? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)

@@ -27,7 +27,14 @@ void main() {
     expect(switchWorkspace(current: 'capture', recording: false, next: 'tune'), 'tune');
     expect(switchWorkspace(current: 'capture', recording: true, next: 'watch'), isNull);
     expect(switchWorkspace(current: 'watch', recording: false, next: 'watch'), isNull);
-    expect(workspaceLabel('tune'), '调节');
+    expect(workspaceModeIds, contains('tune'));
+  });
+
+  test('formats the preview status label', () {
+    expect(
+      formatPreviewLabel(width: 1280, height: 720, format: 'mjpeg', fps: 30),
+      '1280×720 · MJPEG · 30fps',
+    );
   });
 
   test('reads a camera snapshot from the platform map', () {
@@ -43,8 +50,10 @@ void main() {
       'resolutions': [
         {'width': 1280, 'height': 720},
       ],
+      'frameRates': [15, 30, 60],
       'previewWidth': 1280,
       'previewHeight': 720,
+      'previewFps': 30,
       'imageValues': {'brightness': 40},
       'imageSupported': ['brightness'],
       'snackbar': '已保存',
@@ -55,6 +64,8 @@ void main() {
     expect(snapshot.isRecording, isTrue);
     expect(snapshot.devices.single.name, 'HD Camera');
     expect(snapshot.resolutions.single.label, '1280×720');
+    expect(snapshot.frameRates, [15, 30, 60]);
+    expect(snapshot.previewFps, 30);
     expect(snapshot.imageValues['brightness'], 40);
     expect(snapshot.snackbar, '已保存');
   });

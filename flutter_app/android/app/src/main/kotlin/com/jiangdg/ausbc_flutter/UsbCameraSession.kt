@@ -67,13 +67,30 @@ internal class UsbCameraSession(
     textureView: AspectRatioTextureView,
 ) {
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val prefs = activity.getSharedPreferences(PREFS, Activity.MODE_PRIVATE)
     private val request = CameraRequest.Builder()
-        .setPreviewWidth(640)
-        .setPreviewHeight(480)
+        .setPreviewWidth(prefs.getInt(KEY_WIDTH, 640))
+        .setPreviewHeight(prefs.getInt(KEY_HEIGHT, 480))
+        .setPreviewFps(prefs.getInt(KEY_FPS, 30))
         .setRenderMode(CameraRequest.RenderMode.OPENGL)
-        .setPreviewFormat(CameraRequest.PreviewFormat.FORMAT_MJPEG)
-        .setAudioSource(CameraRequest.AudioSource.SOURCE_SYS_MIC)
-        .setDefaultRotateType(RotateType.ANGLE_0)
+        .setPreviewFormat(
+            if (prefs.getString(KEY_FORMAT, "mjpeg") == "yuyv") {
+                CameraRequest.PreviewFormat.FORMAT_YUYV
+            } else {
+                CameraRequest.PreviewFormat.FORMAT_MJPEG
+            },
+        )
+        .setAudioSource(
+            when (prefs.getString(KEY_AUDIO, "system")) {
+                "device" -> CameraRequest.AudioSource.SOURCE_DEV_MIC
+                "auto" -> CameraRequest.AudioSource.SOURCE_AUTO
+                else -> CameraRequest.AudioSource.SOURCE_SYS_MIC
+            },
+        )
+        .setDefaultRotateType(
+            runCatching { RotateType.valueOf(prefs.getString(KEY_ROTATE, RotateType.ANGLE_0.name)!!) }
+                .getOrDefault(RotateType.ANGLE_0),
+        )
         .create()
 
     private val camera = CameraSession(
@@ -100,7 +117,7 @@ internal class UsbCameraSession(
     private var micOn = false
     private var filterId = -1
     private var animationId = -2
-    private var segmentMinutes = 0
+    private var segmentMinutes = prefs.getInt(KEY_SEGMENT, 0)
     private var snackbar: String? = null
     private var timer: Runnable? = null
 
@@ -158,6 +175,7 @@ internal class UsbCameraSession(
             "selectMode" -> selectMode(call.argument<String>("mode"))
             "shutter" -> shutter()
             "selectResolution" -> selectResolution(call.argument<Int>("width"), call.argument<Int>("height"))
+            "selectFps" -> selectFps(call.argument<Int>("fps"))
             "selectFormat" -> selectFormat(call.argument<String>("format"))
             "selectRotate" -> selectRotate(call.argument<String>("rotate"))
             "selectAudio" -> selectAudio(call.argument<String>("source"))
@@ -246,8 +264,10 @@ internal class UsbCameraSession(
             "resolutions" to (camera.getAllPreviewSizes()?.map { size ->
                 mapOf("width" to size.width, "height" to size.height)
             } ?: emptyList()),
+            "frameRates" to frameRatesFor(request.previewWidth, request.previewHeight),
             "previewWidth" to request.previewWidth,
             "previewHeight" to request.previewHeight,
+            "previewFps" to request.previewFps,
             "previewFormat" to if (request.previewFormat == CameraRequest.PreviewFormat.FORMAT_YUYV) "yuyv" else "mjpeg",
             "audioSource" to when (request.audioSource) {
                 CameraRequest.AudioSource.SOURCE_DEV_MIC -> "device"
@@ -297,13 +317,32 @@ internal class UsbCameraSession(
     }
 
     private fun selectResolution(width: Int?, height: Int?) {
-        if (width == null || height == null || recording || !camera.isCameraOpened()) {
+        if (width == null || height == null || recording) {
             return
         }
         if (width == request.previewWidth && height == request.previewHeight) {
             return
         }
-        camera.updateResolution(width, height)
+        request.previewWidth = width
+        request.previewHeight = height
+        savePrefs()
+        if (camera.isCameraOpened()) {
+            camera.updateResolution(width, height)
+        }
+    }
+
+    private fun selectFps(fps: Int?) {
+        if (fps == null || recording || fps < 1) {
+            return
+        }
+        if (fps == request.previewFps) {
+            return
+        }
+        request.previewFps = fps
+        savePrefs()
+        if (camera.isCameraOpened()) {
+            camera.reopen()
+        }
     }
 
     private fun selectFormat(format: String?) {
@@ -316,6 +355,7 @@ internal class UsbCameraSession(
             return
         }
         request.previewFormat = next
+        savePrefs()
         if (camera.isCameraOpened()) {
             camera.reopen()
         }
@@ -324,6 +364,7 @@ internal class UsbCameraSession(
     private fun selectRotate(name: String?) {
         val next = runCatching { RotateType.valueOf(name ?: return) }.getOrNull() ?: return
         request.defaultRotateType = next
+        savePrefs()
         camera.setRotateType(next)
     }
 
@@ -338,6 +379,7 @@ internal class UsbCameraSession(
             return
         }
         request.audioSource = next
+        savePrefs()
         if (camera.isCameraOpened()) {
             camera.reopen()
         }
@@ -348,6 +390,37 @@ internal class UsbCameraSession(
             return
         }
         segmentMinutes = minutes
+        savePrefs()
+    }
+
+    private fun frameRatesFor(width: Int, height: Int): List<Int> {
+        val reported = camera.getSupportedFrameRates(width, height)
+        if (reported.isNotEmpty()) {
+            return reported
+        }
+        return listOf(15, 24, 30, 60)
+    }
+
+    private fun savePrefs() {
+        prefs.edit()
+            .putInt(KEY_WIDTH, request.previewWidth)
+            .putInt(KEY_HEIGHT, request.previewHeight)
+            .putInt(KEY_FPS, request.previewFps)
+            .putString(
+                KEY_FORMAT,
+                if (request.previewFormat == CameraRequest.PreviewFormat.FORMAT_YUYV) "yuyv" else "mjpeg",
+            )
+            .putString(KEY_ROTATE, request.defaultRotateType.name)
+            .putString(
+                KEY_AUDIO,
+                when (request.audioSource) {
+                    CameraRequest.AudioSource.SOURCE_DEV_MIC -> "device"
+                    CameraRequest.AudioSource.SOURCE_AUTO -> "auto"
+                    else -> "system"
+                },
+            )
+            .putInt(KEY_SEGMENT, segmentMinutes)
+            .apply()
     }
 
     private fun setImage(key: String?, value: Int?) {
@@ -427,6 +500,17 @@ internal class UsbCameraSession(
         timer?.let { mainHandler.removeCallbacks(it) }
         timer = null
         elapsedSeconds = 0
+    }
+
+    companion object {
+        private const val PREFS = "ausbc_prefs"
+        private const val KEY_WIDTH = "preview_width"
+        private const val KEY_HEIGHT = "preview_height"
+        private const val KEY_FPS = "preview_fps"
+        private const val KEY_FORMAT = "preview_format"
+        private const val KEY_ROTATE = "rotate"
+        private const val KEY_AUDIO = "audio_source"
+        private const val KEY_SEGMENT = "segment_minutes"
     }
 }
 

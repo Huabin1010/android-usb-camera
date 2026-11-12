@@ -1,0 +1,107 @@
+{
+  "@@locale": "en",
+  "appTitle": "USB Camera",
+  "appEngineCredit": "Camera engine based on AUSBC (UVC / OpenGL)",
+  "appLicense": "License {license}",
+  "@appLicense": {
+    "placeholders": {
+      "license": {"type": "String"}
+    }
+  },
+  "appVersion": "Version {version}",
+  "@appVersion": {
+    "placeholders": {
+      "version": {"type": "String"}
+    }
+  },
+  "permissionNeeded": "Camera, microphone, and photos access are required",
+  "retry": "Retry",
+  "close": "Close",
+  "mode": "Mode",
+  "devices": "Devices",
+  "hideControls": "Hide controls",
+  "noUsbCamera": "No USB camera yet",
+  "workspaceWatch": "Watch",
+  "workspaceCapture": "Capture",
+  "workspaceTune": "Tune",
+  "workspaceWatchHint": "Preview only. Open the device list when you need to switch cameras.",
+  "workspaceCaptureHint": "Photo, video, and audio with the shutter bar.",
+  "workspaceTuneHint": "Picture, video, effects, audio, and segment settings.",
+  "recordingBlocksMode": "Stop recording or audio capture before switching modes",
+  "sectionPicture": "Picture",
+  "sectionVideo": "Video",
+  "sectionEffects": "Effects",
+  "sectionAudio": "Audio",
+  "sectionSettings": "Settings",
+  "autoFocus": "Auto focus",
+  "autoWhiteBalance": "Auto white balance",
+  "resetDefaults": "Reset to defaults",
+  "imageBrightness": "Brightness",
+  "imageContrast": "Contrast",
+  "imageSaturation": "Saturation",
+  "imageHue": "Hue",
+  "imageGain": "Gain",
+  "imageGamma": "Gamma",
+  "imageSharpness": "Sharpness",
+  "imageZoom": "Zoom",
+  "format": "Format",
+  "orientation": "Orientation",
+  "resolution": "Resolution",
+  "frameRate": "Frame rate",
+  "resolutionsAfterConnect": "Shown after a device is connected",
+  "flipUpDown": "Flip vertical",
+  "flipLeftRight": "Flip horizontal",
+  "filter": "Filter",
+  "animation": "Animation",
+  "none": "None",
+  "filterMono": "Black & white",
+  "animSoul": "Soul",
+  "animZoom": "Zoom",
+  "audioSource": "Audio source",
+  "micSystem": "Phone microphone",
+  "micDevice": "Device microphone",
+  "micAuto": "Auto",
+  "listenMic": "Monitor microphone",
+  "about": "About",
+  "tips": "Tips",
+  "tipOtgTitle": "OTG / USB Host required",
+  "tipOtgBody": "Connect a UVC camera, endoscope, or capture card with an OTG adapter. This app is for devices the system camera cannot open.",
+  "tipPrefsTitle": "Preferences are remembered",
+  "tipPrefsBody": "Workspace mode, resolution, frame rate, format, orientation, audio source, and segments restore on the next launch.",
+  "tipMultiTitle": "Multi-camera preview",
+  "tipMultiBody": "Multi-camera grid still lives in the reference Android UI. This build provides a single preview.",
+  "segmentDuration": "Segment length",
+  "segmentNone": "No segments",
+  "segmentMinutes": "{minutes} min",
+  "@segmentMinutes": {
+    "placeholders": {
+      "minutes": {"type": "int"}
+    }
+  },
+  "language": "Language",
+  "languageSystem": "System default",
+  "waitingUsb": "Waiting for USB camera",
+  "openFailed": "Could not open this camera",
+  "waitingHintEmpty": "Use an OTG adapter to connect a UVC camera or capture card. Android will ask for USB permission.",
+  "waitingHintDetected": "A device was detected. Open the list below to choose a camera.",
+  "errorHint": "Check USB permission, or try another cable.",
+  "selectDevice": "Select device",
+  "retryDevice": "Retry device",
+  "modePhoto": "Photo",
+  "modeVideo": "Video",
+  "modeAudio": "Audio",
+  "shutter": "Shutter",
+  "fpsLabel": "{fps} FPS",
+  "@fpsLabel": {
+    "placeholders": {
+      "fps": {"type": "int"}
+    }
+  },
+  "fpsOption": "{fps} fps",
+  "@fpsOption": {
+    "placeholders": {
+      "fps": {"type": "int"}
+    }
+  },
+  "defaultDeviceName": "USB camera"
+}

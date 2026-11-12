@@ -127,6 +127,19 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
         return previewSizeList
     }
 
+    /** Frame rates reported by the current format for [width]×[height]. */
+    fun getSupportedFrameRates(width: Int, height: Int): List<Int> {
+        val isMjpegFormat = mCameraRequest?.previewFormat == CameraRequest.PreviewFormat.FORMAT_MJPEG
+        val sizeList = if (isMjpegFormat && (mUvcCamera?.supportedSizeList?.isNotEmpty() == true)) {
+            mUvcCamera?.supportedSizeList
+        } else {
+            mUvcCamera?.getSupportedSizeList(UVCCamera.FRAME_FORMAT_YUYV)
+        } ?: return emptyList()
+        val matched = sizeList.firstOrNull { it.width == width && it.height == height } ?: return emptyList()
+        val rates = matched.fps?.map { kotlin.math.round(it).toInt() }?.filter { it > 0 }?.distinct()?.sorted()
+        return rates.orEmpty()
+    }
+
     override fun <T> openCameraInternal(cameraView: T) {
         if (Utils.isTargetSdkOverP(ctx) && !CameraUtils.hasCameraPermission(ctx)) {
             closeCamera()
@@ -172,11 +185,12 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
             initEncodeProcessor(previewSize.width, previewSize.height)
             // if give custom minFps or maxFps or unsupported preview size
             // this method will fail
+            val maxFps = request.previewFps.coerceIn(MIN_FS, MAX_FPS)
             mUvcCamera?.setPreviewSize(
                 previewSize.width,
                 previewSize.height,
                 MIN_FS,
-                MAX_FPS,
+                maxFps,
                 previewFormat,
                 UVCCamera.DEFAULT_BANDWIDTH
             )
@@ -193,11 +207,12 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
                     return
                 }
                 Logger.e(TAG, " setPreviewSize failed(format is $previewFormat), try to use other format...")
+                val maxFps = request.previewFps.coerceIn(MIN_FS, MAX_FPS)
                 mUvcCamera?.setPreviewSize(
                     previewSize.width,
                     previewSize.height,
                     MIN_FS,
-                    MAX_FPS,
+                    maxFps,
                     if (previewFormat == UVCCamera.FRAME_FORMAT_YUYV) {
                         UVCCamera.FRAME_FORMAT_MJPEG
                     } else {

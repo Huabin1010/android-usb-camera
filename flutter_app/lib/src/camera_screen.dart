@@ -5,22 +5,34 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import 'app_info.dart';
 import 'camera_client.dart';
 import 'camera_logic.dart';
 import 'camera_snapshot.dart';
+import 'hold_menu.dart';
+import 'l10n_ext.dart';
+import 'locale_controller.dart';
 import 'theme.dart';
+import 'user_prefs.dart';
 
 class CameraScreen extends StatefulWidget {
-  const CameraScreen({super.key, required this.client});
+  const CameraScreen({
+    super.key,
+    required this.client,
+    required this.prefs,
+    required this.locales,
+  });
 
   final CameraClient client;
+  final UserPrefs prefs;
+  final LocaleController locales;
 
   @override
   State<CameraScreen> createState() => _CameraScreenState();
 }
 
 class _CameraScreenState extends State<CameraScreen> {
-  String _workspace = 'watch';
+  late String _workspace = widget.prefs.workspace;
   String? _section;
   String? _lastSnackbar;
   bool _watchChrome = false;
@@ -47,7 +59,7 @@ class _CameraScreenState extends State<CameraScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _setWorkspace(String next) {
+  Future<void> _setWorkspace(String next) async {
     final applied = switchWorkspace(
       current: _workspace,
       recording: widget.client.snapshot.isRecording,
@@ -56,7 +68,7 @@ class _CameraScreenState extends State<CameraScreen> {
     if (applied == null) {
       if (widget.client.snapshot.isRecording && next != 'capture') {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('录像或录音进行中，先停下来再切换模式')),
+          SnackBar(content: Text(context.l10n.recordingBlocksMode)),
         );
       }
       return;
@@ -66,45 +78,18 @@ class _CameraScreenState extends State<CameraScreen> {
       _section = null;
       _watchChrome = false;
     });
+    await widget.prefs.setWorkspace(applied);
   }
 
   void _toggle(String section) {
     setState(() => _section = _section == section ? null : section);
   }
 
-  Future<void> _openWorkspaceSheet() async {
-    final next = await showAppSheet<String>(
-      context,
-      title: '模式',
-      builder: (ctx) => ListView(
-        shrinkWrap: true,
-        padding: const EdgeInsets.only(bottom: 12),
-        children: [
-          for (final id in workspaceModeIds)
-            Semantics(
-              button: true,
-              label: workspaceLabel(id),
-              child: SheetRow(
-                leading: Icon(_workspaceIcon(id), size: 18, color: C.fg68),
-                title: workspaceLabel(id),
-                subtitle: workspaceHint(id),
-                chevron: false,
-                trailing: id == _workspace ? const Icon(Icons.check, size: 18, color: C.fg) : null,
-                onTap: () => Navigator.of(ctx).pop(id),
-              ),
-            ),
-        ],
-      ),
-    );
-    if (next != null && mounted) {
-      _setWorkspace(next);
-    }
-  }
-
   Future<void> _openDevicesSheet() async {
+    final l10n = context.l10n;
     await showAppSheet<void>(
       context,
-      title: '设备',
+      title: l10n.devices,
       builder: (ctx) => ListenableBuilder(
         listenable: widget.client,
         builder: (context, _) {
@@ -115,7 +100,7 @@ class _CameraScreenState extends State<CameraScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('还没有 USB 摄像头', style: T.small),
+                  Text(l10n.noUsbCamera, style: T.small),
                   const SizedBox(height: 14),
                   Pressable(
                     onTap: widget.client.retry,
@@ -126,7 +111,7 @@ class _CameraScreenState extends State<CameraScreen> {
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: C.border),
                       ),
-                      child: const Text('重试', style: T.row),
+                      child: Text(l10n.retry, style: T.row),
                     ),
                   ),
                 ],
@@ -188,7 +173,10 @@ class _CameraScreenState extends State<CameraScreen> {
                     fit: StackFit.expand,
                     children: [
                       const _Preview(),
-                      _ConnectionMessage(client: widget.client),
+                      _ConnectionMessage(
+                        client: widget.client,
+                        onOpenDevices: _openDevicesSheet,
+                      ),
                       if (_workspace == 'watch' && !_watchChrome)
                         Positioned.fill(
                           child: GestureDetector(
@@ -211,6 +199,7 @@ class _CameraScreenState extends State<CameraScreen> {
                             ? const SizedBox.shrink()
                             : _Panel(
                                 client: widget.client,
+                                locales: widget.locales,
                                 section: _section!,
                                 onClose: () => setState(() => _section = null),
                               ),
@@ -219,7 +208,7 @@ class _CameraScreenState extends State<CameraScreen> {
                         _TopChrome(
                           workspace: _workspace,
                           client: widget.client,
-                          onOpenModes: _openWorkspaceSheet,
+                          onSelectWorkspace: _setWorkspace,
                           onOpenDevices: _openDevicesSheet,
                           onHideWatch: _workspace == 'watch'
                               ? () => setState(() {
@@ -248,7 +237,7 @@ class _CameraScreenState extends State<CameraScreen> {
                                   borderRadius: BorderRadius.circular(18),
                                   border: Border.all(color: C.border),
                                 ),
-                                child: const Text('隐藏控制', style: T.chip),
+                                child: Text(context.l10n.hideControls, style: T.chip),
                               ),
                             ),
                           ),
@@ -277,14 +266,14 @@ class _TopChrome extends StatelessWidget {
   const _TopChrome({
     required this.workspace,
     required this.client,
-    required this.onOpenModes,
+    required this.onSelectWorkspace,
     required this.onOpenDevices,
     this.onHideWatch,
   });
 
   final String workspace;
   final CameraClient client;
-  final VoidCallback onOpenModes;
+  final ValueChanged<String> onSelectWorkspace;
   final VoidCallback onOpenDevices;
   final VoidCallback? onHideWatch;
 
@@ -296,12 +285,16 @@ class _TopChrome extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
         child: Row(
           children: [
-            _WorkspaceChip(workspace: workspace, onTap: onOpenModes),
+            _WorkspaceChip(workspace: workspace, onSelect: onSelectWorkspace),
             const SizedBox(width: 8),
-            CircleBtn(icon: Icons.usb, tooltip: '设备', onTap: onOpenDevices),
+            CircleBtn(icon: Icons.usb, tooltip: context.l10n.devices, onTap: onOpenDevices),
             if (onHideWatch != null) ...[
               const SizedBox(width: 8),
-              CircleBtn(icon: Icons.visibility_off_outlined, tooltip: '隐藏控制', onTap: onHideWatch),
+              CircleBtn(
+                icon: Icons.visibility_off_outlined,
+                tooltip: context.l10n.hideControls,
+                onTap: onHideWatch,
+              ),
             ],
             const Spacer(),
             _StatusCluster(client: client),
@@ -313,31 +306,55 @@ class _TopChrome extends StatelessWidget {
 }
 
 class _WorkspaceChip extends StatelessWidget {
-  const _WorkspaceChip({required this.workspace, required this.onTap});
+  const _WorkspaceChip({required this.workspace, required this.onSelect});
 
   final String workspace;
-  final VoidCallback onTap;
+  final ValueChanged<String> onSelect;
 
   @override
   Widget build(BuildContext context) {
-    return Pressable(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(9, 6, 7, 6),
-        decoration: ShapeDecoration(
-          color: Colors.transparent,
-          shape: StadiumBorder(side: BorderSide(color: C.border)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(_workspaceIcon(workspace), size: 14, color: C.fg68),
-            const SizedBox(width: 5),
-            Text(workspaceLabel(workspace), style: T.chip),
-            const SizedBox(width: 2),
-            const Icon(Icons.expand_more, size: 15, color: C.fg68),
-          ],
-        ),
+    final l10n = context.l10n;
+    return Semantics(
+      button: true,
+      label: l10n.mode,
+      child: HoldMenu(
+        width: 248,
+        header: l10n.mode,
+        items: [
+          for (final id in workspaceModeIds)
+            HoldMenuItem(
+              id,
+              l10n.workspaceLabel(id),
+              subtitle: l10n.workspaceHint(id),
+              leading: Icon(_workspaceIcon(id), size: 16, color: C.fg68),
+              checked: id == workspace,
+              maxLines: 1,
+            ),
+        ],
+        onSelect: (id, _) => onSelect(id),
+        builder: (context, open, pressed) {
+          return Container(
+            padding: const EdgeInsets.fromLTRB(9, 6, 7, 6),
+            decoration: ShapeDecoration(
+              color: open ? const Color(0x22FFFFFF) : Colors.transparent,
+              shape: StadiumBorder(side: BorderSide(color: open ? C.fg42 : C.border)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(_workspaceIcon(workspace), size: 14, color: C.fg68),
+                const SizedBox(width: 5),
+                Text(l10n.workspaceLabel(workspace), style: T.chip),
+                const SizedBox(width: 2),
+                AnimatedRotation(
+                  turns: open ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 180),
+                  child: const Icon(Icons.expand_more, size: 15, color: C.fg68),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -474,6 +491,7 @@ class _Rail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return ColoredBox(
       color: C.bg,
       child: SizedBox(
@@ -488,16 +506,46 @@ class _Rail extends StatelessWidget {
                 child: ListView(
                   padding: EdgeInsets.zero,
                   children: [
-                    _RailButton(id: 'picture', icon: Icons.tune, tooltip: '画面', selected: selected, onSelect: onSelect),
-                    _RailButton(id: 'video', icon: Icons.aspect_ratio, tooltip: '视频', selected: selected, onSelect: onSelect),
-                    _RailButton(id: 'effects', icon: Icons.auto_awesome_outlined, tooltip: '效果', selected: selected, onSelect: onSelect),
-                    _RailButton(id: 'audio', icon: Icons.graphic_eq, tooltip: '音频', selected: selected, onSelect: onSelect),
+                    _RailButton(
+                      id: 'picture',
+                      icon: Icons.tune,
+                      tooltip: l10n.sectionTitle('picture'),
+                      selected: selected,
+                      onSelect: onSelect,
+                    ),
+                    _RailButton(
+                      id: 'video',
+                      icon: Icons.aspect_ratio,
+                      tooltip: l10n.sectionTitle('video'),
+                      selected: selected,
+                      onSelect: onSelect,
+                    ),
+                    _RailButton(
+                      id: 'effects',
+                      icon: Icons.auto_awesome_outlined,
+                      tooltip: l10n.sectionTitle('effects'),
+                      selected: selected,
+                      onSelect: onSelect,
+                    ),
+                    _RailButton(
+                      id: 'audio',
+                      icon: Icons.graphic_eq,
+                      tooltip: l10n.sectionTitle('audio'),
+                      selected: selected,
+                      onSelect: onSelect,
+                    ),
                   ],
                 ),
               )
             else
               const Spacer(),
-            _RailButton(id: 'settings', icon: Icons.settings_outlined, tooltip: '设置', selected: selected, onSelect: onSelect),
+            _RailButton(
+              id: 'settings',
+              icon: Icons.settings_outlined,
+              tooltip: l10n.sectionTitle('settings'),
+              selected: selected,
+              onSelect: onSelect,
+            ),
             const SizedBox(height: 8),
           ],
         ),
@@ -539,14 +587,21 @@ class _RailButton extends StatelessWidget {
 }
 
 class _Panel extends StatelessWidget {
-  const _Panel({required this.client, required this.section, required this.onClose});
+  const _Panel({
+    required this.client,
+    required this.locales,
+    required this.section,
+    required this.onClose,
+  });
 
   final CameraClient client;
+  final LocaleController locales;
   final String section;
   final VoidCallback onClose;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -554,9 +609,9 @@ class _Panel extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 8, 6, 0),
           child: Row(
             children: [
-              Expanded(child: Text(_title(section), style: T.sheetTitle)),
+              Expanded(child: Text(l10n.sectionTitle(section), style: T.sheetTitle)),
               IconButton(
-                tooltip: '关闭',
+                tooltip: l10n.close,
                 visualDensity: VisualDensity.compact,
                 onPressed: onClose,
                 icon: const Icon(Icons.close, size: 18, color: C.fg48),
@@ -567,32 +622,22 @@ class _Panel extends StatelessWidget {
         Expanded(
           child: ListenableBuilder(
             listenable: client,
-            builder: (context, _) => _body(client.snapshot),
+            builder: (context, _) => _body(context, client.snapshot),
           ),
         ),
       ],
     );
   }
 
-  Widget _body(CameraSnapshot snapshot) {
+  Widget _body(BuildContext context, CameraSnapshot snapshot) {
     return switch (section) {
       'picture' => _PictureList(client: client, snapshot: snapshot),
       'video' => _VideoList(client: client, snapshot: snapshot),
       'effects' => _EffectList(client: client, snapshot: snapshot),
       'audio' => _AudioList(client: client, snapshot: snapshot),
-      _ => _SettingsList(client: client, snapshot: snapshot),
+      _ => _SettingsList(client: client, locales: locales, snapshot: snapshot),
     };
   }
-}
-
-String _title(String section) {
-  return switch (section) {
-    'picture' => '画面',
-    'video' => '视频',
-    'effects' => '效果',
-    'audio' => '音频',
-    _ => '设置',
-  };
 }
 
 class _PictureList extends StatelessWidget {
@@ -603,25 +648,26 @@ class _PictureList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return ListView(
       padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
       children: [
         if (snapshot.autoFocusSupported)
           SheetRow(
-            title: '自动对焦',
+            title: l10n.autoFocus,
             chevron: false,
             trailing: Switch(value: snapshot.autoFocus, onChanged: client.setAutoFocus),
           ),
         if (snapshot.autoWhiteBalanceSupported)
           SheetRow(
-            title: '自动白平衡',
+            title: l10n.autoWhiteBalance,
             chevron: false,
             trailing: Switch(value: snapshot.autoWhiteBalance, onChanged: client.setAutoWhiteBalance),
           ),
         for (final key in snapshot.imageSupported) ...[
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-            child: Text(imageLabels[key] ?? key, style: T.section),
+            child: Text(l10n.imageLabel(key), style: T.section),
           ),
           Slider(
             value: (snapshot.imageValues[key] ?? 50).clamp(0, 100).toDouble(),
@@ -635,7 +681,7 @@ class _PictureList extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: Pressable(
               onTap: client.resetImage,
-              child: const Text('恢复默认', style: TextStyle(fontSize: 14, color: C.blue2)),
+              child: Text(l10n.resetDefaults, style: const TextStyle(fontSize: 14, color: C.blue2)),
             ),
           ),
         ),
@@ -652,34 +698,49 @@ class _VideoList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final busy = snapshot.isRecording;
     return ListView(
       padding: const EdgeInsets.only(bottom: 12),
       children: [
-        const Padding(padding: EdgeInsets.fromLTRB(16, 8, 16, 4), child: Text('格式', style: T.section)),
-        _choice('MJPEG', snapshot.previewFormat == 'mjpeg', busy ? null : () => client.selectFormat('mjpeg')),
-        _choice('YUYV', snapshot.previewFormat == 'yuyv', busy ? null : () => client.selectFormat('yuyv')),
-        const Padding(padding: EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text('方向', style: T.section)),
-        for (final entry in rotateOptions.entries)
-          _choice(entry.value, snapshot.rotate == entry.key, () => client.selectRotate(entry.key)),
-        const Padding(padding: EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text('分辨率', style: T.section)),
+        Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 4), child: Text(l10n.format, style: T.section)),
+        _choice(context, 'MJPEG', snapshot.previewFormat == 'mjpeg', busy ? null : () => client.selectFormat('mjpeg')),
+        _choice(context, 'YUYV', snapshot.previewFormat == 'yuyv', busy ? null : () => client.selectFormat('yuyv')),
+        Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text(l10n.orientation, style: T.section)),
+        for (final id in rotateOptionIds)
+          _choice(
+            context,
+            l10n.rotateLabel(id),
+            snapshot.rotate == id,
+            busy ? null : () => client.selectRotate(id),
+          ),
+        Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text(l10n.resolution, style: T.section)),
         if (snapshot.resolutions.isEmpty)
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Text('接入设备后显示', style: T.small),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Text(l10n.resolutionsAfterConnect, style: T.small),
           )
         else
           for (final size in snapshot.resolutions)
             _choice(
+              context,
               size.label,
               snapshot.previewWidth == size.width && snapshot.previewHeight == size.height,
               busy ? null : () => client.selectResolution(size.width, size.height),
             ),
+        Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text(l10n.frameRate, style: T.section)),
+        for (final fps in snapshot.frameRates)
+          _choice(
+            context,
+            l10n.fpsOption(fps),
+            snapshot.previewFps == fps,
+            busy ? null : () => client.selectFps(fps),
+          ),
       ],
     );
   }
 
-  Widget _choice(String label, bool selected, VoidCallback? onTap) {
+  Widget _choice(BuildContext context, String label, bool selected, VoidCallback? onTap) {
     return SheetRow(
       title: label,
       chevron: false,
@@ -697,21 +758,22 @@ class _EffectList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return ListView(
       padding: const EdgeInsets.only(bottom: 12),
       children: [
-        const Padding(padding: EdgeInsets.fromLTRB(16, 8, 16, 4), child: Text('滤镜', style: T.section)),
-        _choice('无', snapshot.filterId == -1, () => client.applyEffect('filter', -1)),
-        _choice('黑白', snapshot.filterId == 100, () => client.applyEffect('filter', 100)),
-        const Padding(padding: EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text('动画', style: T.section)),
-        _choice('无', snapshot.animationId == -2, () => client.applyEffect('animation', -2)),
-        _choice('灵魂', snapshot.animationId == 200, () => client.applyEffect('animation', 200)),
-        _choice('缩放', snapshot.animationId == 300, () => client.applyEffect('animation', 300)),
+        Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 4), child: Text(l10n.filter, style: T.section)),
+        _choice(context, l10n.none, snapshot.filterId == -1, () => client.applyEffect('filter', -1)),
+        _choice(context, l10n.filterMono, snapshot.filterId == 100, () => client.applyEffect('filter', 100)),
+        Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text(l10n.animation, style: T.section)),
+        _choice(context, l10n.none, snapshot.animationId == -2, () => client.applyEffect('animation', -2)),
+        _choice(context, l10n.animSoul, snapshot.animationId == 200, () => client.applyEffect('animation', 200)),
+        _choice(context, l10n.animZoom, snapshot.animationId == 300, () => client.applyEffect('animation', 300)),
       ],
     );
   }
 
-  Widget _choice(String label, bool selected, VoidCallback onTap) {
+  Widget _choice(BuildContext context, String label, bool selected, VoidCallback onTap) {
     return SheetRow(
       title: label,
       chevron: false,
@@ -729,16 +791,17 @@ class _AudioList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final busy = snapshot.isRecording;
     return ListView(
       padding: const EdgeInsets.only(bottom: 12),
       children: [
-        const Padding(padding: EdgeInsets.fromLTRB(16, 8, 16, 4), child: Text('音源', style: T.section)),
-        _choice('系统麦克风', snapshot.audioSource == 'system', busy ? null : () => client.selectAudio('system')),
-        _choice('设备麦克风', snapshot.audioSource == 'device', busy ? null : () => client.selectAudio('device')),
-        _choice('自动', snapshot.audioSource == 'auto', busy ? null : () => client.selectAudio('auto')),
+        Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 4), child: Text(l10n.audioSource, style: T.section)),
+        _choice(context, l10n.micSystem, snapshot.audioSource == 'system', busy ? null : () => client.selectAudio('system')),
+        _choice(context, l10n.micDevice, snapshot.audioSource == 'device', busy ? null : () => client.selectAudio('device')),
+        _choice(context, l10n.micAuto, snapshot.audioSource == 'auto', busy ? null : () => client.selectAudio('auto')),
         SheetRow(
-          title: '监听麦克风',
+          title: l10n.listenMic,
           chevron: false,
           trailing: Switch(value: snapshot.micOn, onChanged: (_) => client.toggleMic()),
         ),
@@ -746,7 +809,7 @@ class _AudioList extends StatelessWidget {
     );
   }
 
-  Widget _choice(String label, bool selected, VoidCallback? onTap) {
+  Widget _choice(BuildContext context, String label, bool selected, VoidCallback? onTap) {
     return SheetRow(
       title: label,
       chevron: false,
@@ -757,30 +820,61 @@ class _AudioList extends StatelessWidget {
 }
 
 class _SettingsList extends StatelessWidget {
-  const _SettingsList({required this.client, required this.snapshot});
+  const _SettingsList({required this.client, required this.locales, required this.snapshot});
 
   final CameraClient client;
+  final LocaleController locales;
   final CameraSnapshot snapshot;
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.only(bottom: 12),
-      children: [
-        const SheetRow(
-          title: '多路预览',
-          subtitle: '多路网格仍在参考工程的 Android 界面里。Flutter 版先提供单路预览。',
-          chevron: false,
-        ),
-        const Padding(padding: EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text('分段时长', style: T.section)),
-        for (final minutes in segmentOptions)
-          SheetRow(
-            title: minutes == 0 ? '不分段' : '$minutes 分钟',
-            chevron: false,
-            trailing: snapshot.segmentMinutes == minutes ? const Icon(Icons.check, size: 18, color: C.fg) : null,
-            onTap: snapshot.isRecording ? null : () => client.selectSegment(minutes),
-          ),
-      ],
+    final l10n = context.l10n;
+    return ListenableBuilder(
+      listenable: locales,
+      builder: (context, _) {
+        final localeCode = locales.code;
+        return ListView(
+          padding: const EdgeInsets.only(bottom: 12),
+          children: [
+            Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 4), child: Text(l10n.about, style: T.section)),
+            SheetRow(
+              leading: SvgPicture.asset('assets/brand/ic_launcher.svg', width: 28, height: 28),
+              title: l10n.appTitle,
+              subtitle: l10n.aboutSubtitle(AppInfo.versionLabel),
+              subtitleMaxLines: 4,
+              chevron: false,
+            ),
+            Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text(l10n.language, style: T.section)),
+            SheetRow(
+              title: l10n.languageSystem,
+              chevron: false,
+              trailing: localeCode == null ? const Icon(Icons.check, size: 18, color: C.fg) : null,
+              onTap: () => locales.setLocaleCode(null),
+            ),
+            for (final locale in AppLocales.supported)
+              SheetRow(
+                title: AppLocales.displayName(locale),
+                chevron: false,
+                trailing: localeCode == AppLocales.codeOf(locale)
+                    ? const Icon(Icons.check, size: 18, color: C.fg)
+                    : null,
+                onTap: () => locales.setLocaleCode(AppLocales.codeOf(locale)),
+              ),
+            Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text(l10n.tips, style: T.section)),
+            SheetRow(title: l10n.tipOtgTitle, subtitle: l10n.tipOtgBody, chevron: false),
+            SheetRow(title: l10n.tipPrefsTitle, subtitle: l10n.tipPrefsBody, chevron: false),
+            SheetRow(title: l10n.tipMultiTitle, subtitle: l10n.tipMultiBody, chevron: false),
+            Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text(l10n.segmentDuration, style: T.section)),
+            for (final minutes in segmentOptions)
+              SheetRow(
+                title: minutes == 0 ? l10n.segmentNone : l10n.segmentMinutes(minutes),
+                chevron: false,
+                trailing: snapshot.segmentMinutes == minutes ? const Icon(Icons.check, size: 18, color: C.fg) : null,
+                onTap: snapshot.isRecording ? null : () => client.selectSegment(minutes),
+              ),
+          ],
+        );
+      },
     );
   }
 }
@@ -797,11 +891,25 @@ class _StatusCluster extends StatelessWidget {
       listenable: client,
       builder: (context, _) {
         final snapshot = client.snapshot;
+        final opened = snapshot.connection == 'opened';
         final child = Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('${snapshot.frameRate} FPS', style: TextStyle(fontSize: 13, color: soft ? C.fg42 : C.fg68)),
+            Text(
+              context.l10n.fpsLabel(snapshot.frameRate),
+              style: TextStyle(fontSize: 13, color: soft ? C.fg42 : C.fg68),
+            ),
+            if (opened)
+              Text(
+                formatPreviewLabel(
+                  width: snapshot.previewWidth,
+                  height: snapshot.previewHeight,
+                  format: snapshot.previewFormat,
+                  fps: snapshot.previewFps,
+                ),
+                style: TextStyle(fontSize: 11.5, color: soft ? C.fg30 : C.fg42),
+              ),
             if (snapshot.isRecording)
               Text(
                 formatElapsed(snapshot.elapsedSeconds),
@@ -822,9 +930,10 @@ class _StatusCluster extends StatelessWidget {
 }
 
 class _ConnectionMessage extends StatelessWidget {
-  const _ConnectionMessage({required this.client});
+  const _ConnectionMessage({required this.client, required this.onOpenDevices});
 
   final CameraClient client;
+  final VoidCallback onOpenDevices;
 
   @override
   Widget build(BuildContext context) {
@@ -835,8 +944,55 @@ class _ConnectionMessage extends StatelessWidget {
         if (snapshot.connection == 'opened') {
           return const SizedBox.shrink();
         }
-        final text = snapshot.connection == 'error' ? (snapshot.message ?? '相机打开失败') : '等待 USB 摄像头';
-        return Center(child: Text(text, style: const TextStyle(fontSize: 15, color: C.fg68)));
+        final l10n = context.l10n;
+        final isError = snapshot.connection == 'error';
+        final headline = l10n.connectionTitle(snapshot.connection);
+        final detail = isError
+            ? (snapshot.message ?? l10n.errorHint)
+            : (snapshot.devices.isEmpty ? l10n.waitingHintEmpty : l10n.waitingHintDetected);
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SvgPicture.asset('assets/brand/ic_launcher.svg', width: 56, height: 56),
+                const SizedBox(height: 18),
+                Text(
+                  headline,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: C.fg),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  detail,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13.5, height: 1.45, color: C.fg42),
+                ),
+                const SizedBox(height: 18),
+                Pressable(
+                  onTap: onOpenDevices,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: C.surfaceHi,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: C.border),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(isError ? Icons.refresh : Icons.usb, size: 16, color: C.fg68),
+                        const SizedBox(width: 8),
+                        Text(isError ? l10n.retryDevice : l10n.selectDevice, style: T.row),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
       },
     );
   }
@@ -854,6 +1010,7 @@ class _CaptureBar extends StatelessWidget {
       listenable: client,
       builder: (context, _) {
         final snapshot = client.snapshot;
+        final l10n = context.l10n;
         return Align(
           alignment: Alignment.bottomCenter,
           child: Padding(
@@ -874,21 +1031,21 @@ class _CaptureBar extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _CaptureChip(
-                          label: '拍照',
+                          label: l10n.modePhoto,
                           icon: Icons.photo_camera,
                           selected: snapshot.mode == 'photo',
                           enabled: !snapshot.isRecording,
                           onTap: () => client.selectMode('photo'),
                         ),
                         _CaptureChip(
-                          label: '录像',
+                          label: l10n.modeVideo,
                           icon: Icons.videocam,
                           selected: snapshot.mode == 'video',
                           enabled: !snapshot.isRecording,
                           onTap: () => client.selectMode('video'),
                         ),
                         _CaptureChip(
-                          label: '录音',
+                          label: l10n.modeAudio,
                           icon: Icons.mic,
                           selected: snapshot.mode == 'audio',
                           enabled: !snapshot.isRecording,
@@ -903,7 +1060,7 @@ class _CaptureBar extends StatelessWidget {
                   onTap: client.shutter,
                   child: Semantics(
                     button: true,
-                    label: '快门',
+                    label: l10n.shutter,
                     child: Container(
                       width: 76,
                       height: 76,
