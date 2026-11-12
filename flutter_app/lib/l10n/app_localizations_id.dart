@@ -216,6 +216,63 @@ class AppLocalizationsId extends AppLocalizations {
   String get languageSystem => 'Default sistem';
 
   @override
+  String get appearance => 'Tampilan';
+
+  @override
+  String get themeSystem => 'Default sistem';
+
+  @override
+  String get themeLight => 'Terang';
+
+  @override
+  String get themeDark => 'Gelap';
+
+  @override
+  String get tools => 'Kontrol';
+
+  @override
+  String get previewPresets => 'Preset pratinjau';
+
+  @override
+  String get presetCustom => 'Kustom…';
+
+  @override
+  String get presetManage => 'Kelola preset';
+
+  @override
+  String get presetAddCurrent => 'Tambah saat ini';
+
+  @override
+  String get presetAdd => 'Tambah preset';
+
+  @override
+  String get presetReset => 'Pulihkan default';
+
+  @override
+  String get presetDelete => 'Hapus';
+
+  @override
+  String get presetEmpty => 'Belum ada preset';
+
+  @override
+  String get presetAdded => 'Ditambahkan';
+
+  @override
+  String get presetExists => 'Sudah ada';
+
+  @override
+  String get presetPickResolution => 'Pilih resolusi';
+
+  @override
+  String get presetPickFps => 'Pilih fps';
+
+  @override
+  String get presetSave => 'Simpan sebagai preset';
+
+  @override
+  String get presetApply => 'Terapkan';
+
+  @override
   String get waitingUsb => 'Menunggu kamera USB';
 
   @override

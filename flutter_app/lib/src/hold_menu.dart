@@ -73,11 +73,7 @@ class HoldMenu extends StatefulWidget {
 
 class _HoldMenuState extends State<HoldMenu>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _anim = AnimationController(
-    vsync: this,
-    duration: HoldMenu.openDuration,
-    reverseDuration: HoldMenu.closeDuration,
-  );
+  late final AnimationController _anim;
   final _btnKey = GlobalKey();
   OverlayEntry? _entry;
   bool _pressed = false;
@@ -87,6 +83,16 @@ class _HoldMenuState extends State<HoldMenu>
   String? _hover;
 
   bool get _isOpen => _entry != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _anim = AnimationController(
+      vsync: this,
+      duration: HoldMenu.openDuration,
+      reverseDuration: HoldMenu.closeDuration,
+    );
+  }
 
   @override
   void didUpdateWidget(HoldMenu old) {
@@ -111,7 +117,7 @@ class _HoldMenuState extends State<HoldMenu>
     if (_isOpen) return;
     _hover = null;
     _entry = OverlayEntry(builder: _buildMenu);
-    Overlay.of(context).insert(_entry!);
+    Overlay.of(context, rootOverlay: true).insert(_entry!);
     _anim.forward(from: 0);
     setState(() {});
     widget.onOpen?.call();
@@ -260,7 +266,7 @@ class _HoldMenuState extends State<HoldMenu>
             onTap: _close,
             child: FadeTransition(
               opacity: fade,
-              child: const ColoredBox(color: Color(0x33000000)),
+              child: ColoredBox(color: C.scrim),
             ),
           ),
         ),
@@ -284,7 +290,7 @@ class _HoldMenuState extends State<HoldMenu>
         // iOS 菜单里不同组之间用一条粗分隔，同组之间是细线。
         rows.add(
           items[i].group != items[i - 1].group
-              ? Container(height: 7, color: const Color(0x33000000))
+              ? Container(height: 7, color: C.groupDivider)
               : _Hairline(indent: items[i].leading == null ? 14 : 52),
         );
       }
@@ -296,11 +302,11 @@ class _HoldMenuState extends State<HoldMenu>
         width: width,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
-          boxShadow: const [
+          boxShadow: [
             BoxShadow(
-              color: Color(0x66000000),
+              color: C.menuShadow,
               blurRadius: 30,
-              offset: Offset(0, 12),
+              offset: const Offset(0, 12),
             ),
           ],
         ),
@@ -310,7 +316,7 @@ class _HoldMenuState extends State<HoldMenu>
             filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xE62C2B27),
+                color: C.menuBg,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: C.border, width: 0.6),
               ),
@@ -323,7 +329,7 @@ class _HoldMenuState extends State<HoldMenu>
                       padding: const EdgeInsets.fromLTRB(16, 11, 16, 7),
                       child: Text(
                         h,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           color: C.fg42,
                           letterSpacing: 0.2,
@@ -361,7 +367,7 @@ class _HoldMenuState extends State<HoldMenu>
       onTap: it.enabled ? () => _choose(it.id) : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 90),
-        color: hover ? const Color(0x1FFFFFFF) : Colors.transparent,
+        color: hover ? C.menuHover : Colors.transparent,
         padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
         child: Row(
           children: [
@@ -389,13 +395,13 @@ class _HoldMenuState extends State<HoldMenu>
                     const SizedBox(height: 2),
                     Text(
                       s,
-                      style: const TextStyle(fontSize: 12, color: C.fg30),
+                      style: TextStyle(fontSize: 12, color: C.fg30),
                     ),
                   ],
                 ],
               ),
             ),
-            if (it.checked) const Icon(Icons.check, size: 18, color: C.fg),
+            if (it.checked) Icon(Icons.check, size: 18, color: C.fg),
           ],
         ),
       ),
@@ -410,6 +416,6 @@ class _Hairline extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     height: 0.5,
     margin: EdgeInsets.only(left: indent),
-    color: const Color(0x1FFFFFFF),
+    color: C.hairline,
   );
 }

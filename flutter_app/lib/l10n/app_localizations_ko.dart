@@ -211,6 +211,63 @@ class AppLocalizationsKo extends AppLocalizations {
   String get languageSystem => '시스템 기본';
 
   @override
+  String get appearance => '모양';
+
+  @override
+  String get themeSystem => '시스템 기본';
+
+  @override
+  String get themeLight => '라이트';
+
+  @override
+  String get themeDark => '다크';
+
+  @override
+  String get tools => '조절';
+
+  @override
+  String get previewPresets => '미리보기 프리셋';
+
+  @override
+  String get presetCustom => '사용자 지정…';
+
+  @override
+  String get presetManage => '프리셋 관리';
+
+  @override
+  String get presetAddCurrent => '현재 설정 추가';
+
+  @override
+  String get presetAdd => '프리셋 추가';
+
+  @override
+  String get presetReset => '기본값으로 재설정';
+
+  @override
+  String get presetDelete => '제거';
+
+  @override
+  String get presetEmpty => '프리셋 없음';
+
+  @override
+  String get presetAdded => '추가됨';
+
+  @override
+  String get presetExists => '이미 있음';
+
+  @override
+  String get presetPickResolution => '해상도 선택';
+
+  @override
+  String get presetPickFps => '프레임 속도 선택';
+
+  @override
+  String get presetSave => '프리셋으로 저장';
+
+  @override
+  String get presetApply => '적용';
+
+  @override
   String get waitingUsb => 'USB 카메라 대기 중';
 
   @override

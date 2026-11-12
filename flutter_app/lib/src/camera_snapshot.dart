@@ -44,6 +44,7 @@ class CameraSnapshot {
     required this.filterId,
     required this.animationId,
     required this.snackbar,
+    required this.textureId,
   });
 
   const CameraSnapshot.empty()
@@ -73,7 +74,8 @@ class CameraSnapshot {
         micOn = false,
         filterId = -1,
         animationId = -2,
-        snackbar = null;
+        snackbar = null,
+        textureId = -1;
 
   final String connection;
   final int? deviceId;
@@ -102,6 +104,7 @@ class CameraSnapshot {
   final int filterId;
   final int animationId;
   final String? snackbar;
+  final int textureId;
 
   factory CameraSnapshot.fromMap(Map<Object?, Object?> raw) {
     return CameraSnapshot(
@@ -140,6 +143,7 @@ class CameraSnapshot {
       filterId: _asInt(raw['filterId'], -1),
       animationId: _asInt(raw['animationId'], -2),
       snackbar: raw['snackbar'] as String?,
+      textureId: _asInt(raw['textureId'], -1),
     );
   }
 }

@@ -509,6 +509,120 @@ abstract class AppLocalizations {
   /// **'System default'**
   String get languageSystem;
 
+  /// No description provided for @appearance.
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance'**
+  String get appearance;
+
+  /// No description provided for @themeSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System default'**
+  String get themeSystem;
+
+  /// No description provided for @themeLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get themeLight;
+
+  /// No description provided for @themeDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get themeDark;
+
+  /// No description provided for @tools.
+  ///
+  /// In en, this message translates to:
+  /// **'Controls'**
+  String get tools;
+
+  /// No description provided for @previewPresets.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview presets'**
+  String get previewPresets;
+
+  /// No description provided for @presetCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom…'**
+  String get presetCustom;
+
+  /// No description provided for @presetManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage presets'**
+  String get presetManage;
+
+  /// No description provided for @presetAddCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Add current setup'**
+  String get presetAddCurrent;
+
+  /// No description provided for @presetAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add preset'**
+  String get presetAdd;
+
+  /// No description provided for @presetReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset default presets'**
+  String get presetReset;
+
+  /// No description provided for @presetDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get presetDelete;
+
+  /// No description provided for @presetEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No presets yet'**
+  String get presetEmpty;
+
+  /// No description provided for @presetAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Added to presets'**
+  String get presetAdded;
+
+  /// No description provided for @presetExists.
+  ///
+  /// In en, this message translates to:
+  /// **'Already in presets'**
+  String get presetExists;
+
+  /// No description provided for @presetPickResolution.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose resolution'**
+  String get presetPickResolution;
+
+  /// No description provided for @presetPickFps.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose frame rate'**
+  String get presetPickFps;
+
+  /// No description provided for @presetSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save as preset'**
+  String get presetSave;
+
+  /// No description provided for @presetApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get presetApply;
+
   /// No description provided for @waitingUsb.
   ///
   /// In en, this message translates to:

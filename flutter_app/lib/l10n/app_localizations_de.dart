@@ -218,6 +218,63 @@ class AppLocalizationsDe extends AppLocalizations {
   String get languageSystem => 'Systemstandard';
 
   @override
+  String get appearance => 'Erscheinungsbild';
+
+  @override
+  String get themeSystem => 'Systemstandard';
+
+  @override
+  String get themeLight => 'Hell';
+
+  @override
+  String get themeDark => 'Dunkel';
+
+  @override
+  String get tools => 'Steuerung';
+
+  @override
+  String get previewPresets => 'Vorschau-Presets';
+
+  @override
+  String get presetCustom => 'Benutzerdefiniert…';
+
+  @override
+  String get presetManage => 'Presets verwalten';
+
+  @override
+  String get presetAddCurrent => 'Aktuelles hinzufügen';
+
+  @override
+  String get presetAdd => 'Preset hinzufügen';
+
+  @override
+  String get presetReset => 'Standard wiederherstellen';
+
+  @override
+  String get presetDelete => 'Entfernen';
+
+  @override
+  String get presetEmpty => 'Keine Presets';
+
+  @override
+  String get presetAdded => 'Hinzugefügt';
+
+  @override
+  String get presetExists => 'Bereits vorhanden';
+
+  @override
+  String get presetPickResolution => 'Auflösung wählen';
+
+  @override
+  String get presetPickFps => 'Bildrate wählen';
+
+  @override
+  String get presetSave => 'Als Preset speichern';
+
+  @override
+  String get presetApply => 'Übernehmen';
+
+  @override
   String get waitingUsb => 'Warte auf USB-Kamera';
 
   @override

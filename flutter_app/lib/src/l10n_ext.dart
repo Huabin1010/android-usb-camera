@@ -18,6 +18,14 @@ extension AppLocalizationsLabels on AppLocalizations {
     };
   }
 
+  String themeLabel(String id) {
+    return switch (id) {
+      'light' => themeLight,
+      'dark' => themeDark,
+      _ => themeSystem,
+    };
+  }
+
   String workspaceHint(String id) {
     return switch (id) {
       'capture' => workspaceCaptureHint,
@@ -32,6 +40,7 @@ extension AppLocalizationsLabels on AppLocalizations {
       'video' => sectionVideo,
       'effects' => sectionEffects,
       'audio' => sectionAudio,
+      'appearance' => appearance,
       _ => sectionSettings,
     };
   }

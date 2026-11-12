@@ -216,6 +216,63 @@ class AppLocalizationsRu extends AppLocalizations {
   String get languageSystem => 'Как в системе';
 
   @override
+  String get appearance => 'Оформление';
+
+  @override
+  String get themeSystem => 'Как в системе';
+
+  @override
+  String get themeLight => 'Светлая';
+
+  @override
+  String get themeDark => 'Тёмная';
+
+  @override
+  String get tools => 'Параметры';
+
+  @override
+  String get previewPresets => 'Пресеты превью';
+
+  @override
+  String get presetCustom => 'Свой…';
+
+  @override
+  String get presetManage => 'Управление пресетами';
+
+  @override
+  String get presetAddCurrent => 'Добавить текущий';
+
+  @override
+  String get presetAdd => 'Добавить пресет';
+
+  @override
+  String get presetReset => 'Сбросить по умолчанию';
+
+  @override
+  String get presetDelete => 'Удалить';
+
+  @override
+  String get presetEmpty => 'Нет пресетов';
+
+  @override
+  String get presetAdded => 'Добавлено';
+
+  @override
+  String get presetExists => 'Уже есть';
+
+  @override
+  String get presetPickResolution => 'Выбрать разрешение';
+
+  @override
+  String get presetPickFps => 'Выбрать частоту';
+
+  @override
+  String get presetSave => 'Сохранить как пресет';
+
+  @override
+  String get presetApply => 'Применить';
+
+  @override
   String get waitingUsb => 'Ожидание USB-камеры';
 
   @override

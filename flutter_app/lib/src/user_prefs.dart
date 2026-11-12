@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'camera_logic.dart';
@@ -9,6 +11,8 @@ class UserPrefs {
 
   static const _workspaceKey = 'workspace_mode';
   static const _localeKey = 'locale_code';
+  static const _themeKey = 'theme_mode';
+  static const _presetsKey = 'preview_presets';
 
   static Future<UserPrefs> load() async {
     return UserPrefs(await SharedPreferences.getInstance());
@@ -38,5 +42,39 @@ class UserPrefs {
       return;
     }
     await _prefs.setString(_localeKey, code);
+  }
+
+  /// `system` / `light` / `dark`；缺失时跟随系统。
+  String get themeMode {
+    final value = _prefs.getString(_themeKey);
+    if (value == 'light' || value == 'dark' || value == 'system') {
+      return value!;
+    }
+    return 'system';
+  }
+
+  Future<void> setThemeMode(String id) async {
+    if (id != 'light' && id != 'dark' && id != 'system') {
+      return;
+    }
+    await _prefs.setString(_themeKey, id);
+  }
+
+  /// 用户可编辑的预览预设目录；缺失时用默认五项。
+  List<PreviewPreset> get previewPresets {
+    final raw = _prefs.getString(_presetsKey);
+    if (raw == null || raw.isEmpty) {
+      return List<PreviewPreset>.of(defaultPreviewPresets);
+    }
+    try {
+      return decodePreviewPresets(jsonDecode(raw));
+    } catch (_) {
+      return List<PreviewPreset>.of(defaultPreviewPresets);
+    }
+  }
+
+  Future<void> setPreviewPresets(List<PreviewPreset> presets) async {
+    final normalized = decodePreviewPresets(encodePreviewPresets(presets));
+    await _prefs.setString(_presetsKey, jsonEncode(encodePreviewPresets(normalized)));
   }
 }

@@ -1,8 +1,4 @@
-import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import 'app_info.dart';
@@ -12,7 +8,10 @@ import 'camera_snapshot.dart';
 import 'hold_menu.dart';
 import 'l10n_ext.dart';
 import 'locale_controller.dart';
+import 'preview_preset_controller.dart';
+import 'preview_preset_ui.dart';
 import 'theme.dart';
+import 'theme_controller.dart';
 import 'user_prefs.dart';
 
 class CameraScreen extends StatefulWidget {
@@ -21,11 +20,15 @@ class CameraScreen extends StatefulWidget {
     required this.client,
     required this.prefs,
     required this.locales,
+    required this.themes,
+    required this.presets,
   });
 
   final CameraClient client;
   final UserPrefs prefs;
   final LocaleController locales;
+  final ThemeController themes;
+  final PreviewPresetController presets;
 
   @override
   State<CameraScreen> createState() => _CameraScreenState();
@@ -36,6 +39,7 @@ class _CameraScreenState extends State<CameraScreen> {
   String? _section;
   String? _lastSnackbar;
   bool _watchChrome = false;
+  bool _drawerOpen = false;
 
   @override
   void initState() {
@@ -77,178 +81,142 @@ class _CameraScreenState extends State<CameraScreen> {
     setState(() {
       _workspace = applied;
       _section = null;
+      _drawerOpen = false;
       _watchChrome = false;
     });
     await widget.prefs.setWorkspace(applied);
   }
 
-  void _toggle(String section) {
-    setState(() => _section = _section == section ? null : section);
+  void _toggleDrawer() {
+    setState(() {
+      _drawerOpen = !_drawerOpen;
+      if (!_drawerOpen) {
+        _section = null;
+      }
+    });
   }
 
-  Future<void> _openDevicesSheet() async {
-    final l10n = context.l10n;
-    await showAppSheet<void>(
-      context,
-      title: l10n.devices,
-      builder: (ctx) => ListenableBuilder(
-        listenable: widget.client,
-        builder: (context, _) {
-          final snapshot = widget.client.snapshot;
-          if (snapshot.devices.isEmpty) {
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(l10n.noUsbCamera, style: T.small),
-                  const SizedBox(height: 14),
-                  Pressable(
-                    onTap: widget.client.retry,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: C.surfaceHi,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: C.border),
-                      ),
-                      child: Text(l10n.retry, style: T.row),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-          return ListView(
-            shrinkWrap: true,
-            padding: const EdgeInsets.only(bottom: 12),
-            children: [
-              for (final device in snapshot.devices)
-                SheetRow(
-                  leading: Icon(
-                    Icons.usb,
-                    size: 18,
-                    color: device.id == snapshot.deviceId ? C.blue2 : C.fg68,
-                  ),
-                  title: context.l10n.deviceDisplayName(device.name),
-                  subtitle: device.summary,
-                  chevron: false,
-                  trailing: device.id == snapshot.deviceId
-                      ? const Icon(Icons.check, size: 18, color: C.fg)
-                      : null,
-                  onTap: () {
-                    widget.client.selectDevice(device.id);
-                    Navigator.of(ctx).maybePop();
-                  },
-                ),
-            ],
-          );
-        },
-      ),
-    );
+  void _closeDrawer() {
+    if (!_drawerOpen && _section == null) {
+      return;
+    }
+    setState(() {
+      _drawerOpen = false;
+      _section = null;
+    });
+  }
+
+  void _selectSection(String id) {
+    setState(() {
+      _drawerOpen = true;
+      _section = _section == id ? null : id;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final showRail = _workspace == 'tune';
     final showCapture = _workspace == 'capture';
     final showTopChrome = _workspace != 'watch' || _watchChrome;
+    final canDrawer = _workspace == 'tune';
+    final drawerOpen = canDrawer && _drawerOpen;
+    final sectionOpen = canDrawer && _section != null;
 
     return Scaffold(
       backgroundColor: C.bg,
       body: SafeArea(
-        child: Row(
-          children: [
-            if (showRail)
-              _Rail(
-                selected: _section,
-                onSelect: _toggle,
-                showTools: _workspace == 'tune',
-              ),
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final short = constraints.maxHeight < 520;
-                  final reserve = showCapture ? (short ? 112.0 : captureBarReserve) : 72.0;
-                  return Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      const _Preview(),
-                      _ConnectionMessage(
-                        client: widget.client,
-                        onOpenDevices: _openDevicesSheet,
-                      ),
-                      if (_workspace == 'watch' && !_watchChrome)
-                        Positioned.fill(
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.translucent,
-                            onTap: () => setState(() => _watchChrome = true),
-                          ),
-                        ),
-                      if (_section != null)
-                        Positioned.fill(
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.translucent,
-                            onTap: () => setState(() => _section = null),
-                          ),
-                        ),
-                      _SidePanel(
-                        open: _section != null,
-                        width: overlayPanelWidth(constraints.maxWidth),
-                        bottomReserve: reserve,
-                        child: _section == null
-                            ? const SizedBox.shrink()
-                            : _Panel(
-                                client: widget.client,
-                                locales: widget.locales,
-                                section: _section!,
-                                onClose: () => setState(() => _section = null),
-                              ),
-                      ),
-                      if (showTopChrome)
-                        _TopChrome(
-                          workspace: _workspace,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final short = constraints.maxHeight < 520;
+            final reserve = showCapture ? (short ? 112.0 : captureBarReserve) : 72.0;
+            // 抽屉打开时面板紧挨轨道，并向右铺满。
+            final panelLeft = drawerOpen ? drawerRailWidth + 16 : 8.0;
+            final panelWidth = overlayPanelWidth(constraints.maxWidth - panelLeft);
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                _Preview(
+                  client: widget.client,
+                  onTap: _workspace == 'watch' && !_watchChrome
+                      ? () => setState(() => _watchChrome = true)
+                      : null,
+                ),
+                _ConnectionMessage(client: widget.client),
+                if (drawerOpen || sectionOpen)
+                  Positioned.fill(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onTap: _closeDrawer,
+                    ),
+                  ),
+                if (showTopChrome)
+                  _TopChrome(
+                    workspace: _workspace,
+                    client: widget.client,
+                    presets: widget.presets,
+                    onSelectWorkspace: _setWorkspace,
+                    showDrawerToggle: canDrawer,
+                    drawerOpen: drawerOpen,
+                    onToggleDrawer: _toggleDrawer,
+                    onHideWatch: _workspace == 'watch'
+                        ? () => setState(() {
+                              _watchChrome = false;
+                              _drawerOpen = false;
+                              _section = null;
+                            })
+                        : null,
+                  ),
+                if (!showTopChrome)
+                  _StatusCluster(client: widget.client, soft: true),
+                // 抽屉/侧栏叠在分辨率入口之上，避免被盖住；顶栏芯片仍可点。
+                if (canDrawer)
+                  _DrawerRail(
+                    open: drawerOpen,
+                    selected: _section,
+                    onSelect: _selectSection,
+                  ),
+                _SidePanel(
+                  open: sectionOpen,
+                  left: panelLeft,
+                  width: panelWidth,
+                  bottomReserve: reserve,
+                  child: sectionOpen
+                      ? _Panel(
                           client: widget.client,
-                          onSelectWorkspace: _setWorkspace,
-                          onOpenDevices: _openDevicesSheet,
-                          onHideWatch: _workspace == 'watch'
-                              ? () => setState(() {
-                                    _watchChrome = false;
-                                    _section = null;
-                                  })
-                              : null,
-                        ),
-                      if (!showTopChrome)
-                        _StatusCluster(client: widget.client, soft: true),
-                      if (showCapture) _CaptureBar(client: widget.client, compact: short),
-                      if (_workspace == 'watch' && _watchChrome)
-                        Align(
-                          alignment: Alignment.bottomCenter,
-                          child: Padding(
-                            padding: const EdgeInsets.only(bottom: 20),
-                            child: Pressable(
-                              onTap: () => setState(() {
-                                _watchChrome = false;
-                                _section = null;
-                              }),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xCC1C1B18),
-                                  borderRadius: BorderRadius.circular(18),
-                                  border: Border.all(color: C.border),
-                                ),
-                                child: Text(context.l10n.hideControls, style: T.chip),
-                              ),
-                            ),
+                          locales: widget.locales,
+                          presets: widget.presets,
+                          themes: widget.themes,
+                          section: _section!,
+                          onClose: () => setState(() => _section = null),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+                if (showCapture) _CaptureBar(client: widget.client, compact: short),
+                if (_workspace == 'watch' && _watchChrome)
+                  Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 20),
+                      child: Pressable(
+                        onTap: () => setState(() {
+                          _watchChrome = false;
+                          _section = null;
+                          _drawerOpen = false;
+                        }),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: C.chromeScrim,
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: C.border),
                           ),
+                          child: Text(context.l10n.hideControls, style: T.chip),
                         ),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ],
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -267,41 +235,173 @@ class _TopChrome extends StatelessWidget {
   const _TopChrome({
     required this.workspace,
     required this.client,
+    required this.presets,
     required this.onSelectWorkspace,
-    required this.onOpenDevices,
+    this.showDrawerToggle = false,
+    this.drawerOpen = false,
+    this.onToggleDrawer,
     this.onHideWatch,
   });
 
   final String workspace;
   final CameraClient client;
+  final PreviewPresetController presets;
   final ValueChanged<String> onSelectWorkspace;
-  final VoidCallback onOpenDevices;
+  final bool showDrawerToggle;
+  final bool drawerOpen;
+  final VoidCallback? onToggleDrawer;
   final VoidCallback? onHideWatch;
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.topCenter,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-        child: Row(
-          children: [
-            _WorkspaceChip(workspace: workspace, onSelect: onSelectWorkspace),
-            const SizedBox(width: 8),
-            CircleBtn(icon: Icons.usb, tooltip: context.l10n.devices, onTap: onOpenDevices),
-            if (onHideWatch != null) ...[
-              const SizedBox(width: 8),
-              CircleBtn(
-                icon: Icons.visibility_off_outlined,
-                tooltip: context.l10n.hideControls,
-                onTap: onHideWatch,
-              ),
-            ],
-            const Spacer(),
-            _StatusCluster(client: client),
-          ],
-        ),
+    return SizedBox.expand(
+      child: Stack(
+        children: [
+          // 分辨率入口先画，模式/设备等芯片后画，避免下拉被盖住。
+          Positioned(
+            top: 54,
+            left: 0,
+            right: 0,
+            child: Center(child: _PreviewStatusMenu(client: client, presets: presets)),
+          ),
+          Positioned(
+            top: 10,
+            left: 12,
+            right: 12,
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                if (showDrawerToggle && onToggleDrawer != null)
+                  CircleBtn(
+                    icon: Icons.tune,
+                    tooltip: context.l10n.tools,
+                    active: drawerOpen,
+                    onTap: onToggleDrawer,
+                  ),
+                _WorkspaceChip(workspace: workspace, onSelect: onSelectWorkspace),
+                _DevicesChip(client: client),
+                if (onHideWatch != null)
+                  CircleBtn(
+                    icon: Icons.visibility_off_outlined,
+                    tooltip: context.l10n.hideControls,
+                    onTap: onHideWatch,
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
+    );
+  }
+}
+
+const _retryDeviceId = '__retry__';
+
+List<HoldMenuItem> _deviceMenuItems(AppLocalizations l10n, CameraSnapshot snapshot) {
+  if (snapshot.devices.isEmpty) {
+    return [
+      HoldMenuItem(
+        _retryDeviceId,
+        l10n.noUsbCamera,
+        subtitle: l10n.retry,
+        leading: Icon(Icons.refresh, size: 16, color: C.fg68),
+        maxLines: 1,
+      ),
+    ];
+  }
+  return [
+    for (final device in snapshot.devices)
+      HoldMenuItem(
+        '${device.id}',
+        l10n.deviceDisplayName(device.name),
+        subtitle: device.summary.isEmpty ? null : device.summary,
+        leading: Icon(
+          Icons.usb,
+          size: 16,
+          color: device.id == snapshot.deviceId ? C.blue2 : C.fg68,
+        ),
+        checked: device.id == snapshot.deviceId,
+        maxLines: 1,
+      ),
+  ];
+}
+
+void _onDeviceMenuSelect(CameraClient client, String id) {
+  if (id == _retryDeviceId) {
+    client.retry();
+    return;
+  }
+  final parsed = int.tryParse(id);
+  if (parsed != null) {
+    client.selectDevice(parsed);
+  }
+}
+
+String _currentDeviceLabel(AppLocalizations l10n, CameraSnapshot snapshot) {
+  if (snapshot.deviceId == null) {
+    return l10n.devices;
+  }
+  for (final device in snapshot.devices) {
+    if (device.id == snapshot.deviceId) {
+      return l10n.deviceDisplayName(device.name);
+    }
+  }
+  return l10n.devices;
+}
+
+class _DevicesChip extends StatelessWidget {
+  const _DevicesChip({required this.client});
+
+  final CameraClient client;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return ListenableBuilder(
+      listenable: client,
+      builder: (context, _) {
+        final snapshot = client.snapshot;
+        final label = _currentDeviceLabel(l10n, snapshot);
+        return Semantics(
+          button: true,
+          label: l10n.devices,
+          child: HoldMenu(
+            width: 280,
+            header: l10n.devices,
+            items: _deviceMenuItems(l10n, snapshot),
+            onSelect: (id, _) => _onDeviceMenuSelect(client, id),
+            builder: (context, open, pressed) {
+              return _ChromeChipShell(
+                open: open,
+                maxWidth: 140,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.usb, size: 14, color: C.fg),
+                    const SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: T.chip.copyWith(color: C.fg, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    AnimatedRotation(
+                      turns: open ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 180),
+                      child: Icon(Icons.expand_more, size: 15, color: C.fg),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }
@@ -334,23 +434,22 @@ class _WorkspaceChip extends StatelessWidget {
         ],
         onSelect: (id, _) => onSelect(id),
         builder: (context, open, pressed) {
-          return Container(
-            padding: const EdgeInsets.fromLTRB(9, 6, 7, 6),
-            decoration: ShapeDecoration(
-              color: open ? const Color(0x22FFFFFF) : Colors.transparent,
-              shape: StadiumBorder(side: BorderSide(color: open ? C.fg42 : C.border)),
-            ),
+          return _ChromeChipShell(
+            open: open,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(_workspaceIcon(workspace), size: 14, color: C.fg68),
+                Icon(_workspaceIcon(workspace), size: 14, color: C.fg),
                 const SizedBox(width: 5),
-                Text(l10n.workspaceLabel(workspace), style: T.chip),
+                Text(
+                  l10n.workspaceLabel(workspace),
+                  style: T.chip.copyWith(color: C.fg, fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(width: 2),
                 AnimatedRotation(
                   turns: open ? 0.5 : 0,
                   duration: const Duration(milliseconds: 180),
-                  child: const Icon(Icons.expand_more, size: 15, color: C.fg68),
+                  child: Icon(Icons.expand_more, size: 15, color: C.fg),
                 ),
               ],
             ),
@@ -361,17 +460,45 @@ class _WorkspaceChip extends StatelessWidget {
   }
 }
 
+/// 叠在预览上的顶栏 chip：用不透明底，避免浅色字/深色字贴在画面上发虚。
+class _ChromeChipShell extends StatelessWidget {
+  const _ChromeChipShell({
+    required this.open,
+    required this.child,
+    this.maxWidth,
+  });
+
+  final bool open;
+  final Widget child;
+  final double? maxWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: maxWidth == null ? null : BoxConstraints(maxWidth: maxWidth!),
+      padding: const EdgeInsets.fromLTRB(10, 7, 8, 7),
+      decoration: ShapeDecoration(
+        color: open ? C.surfaceHi : C.chromeScrim,
+        shape: StadiumBorder(side: BorderSide(color: open ? C.fg42 : C.border)),
+      ),
+      child: child,
+    );
+  }
+}
+
 class _SidePanel extends StatefulWidget {
   const _SidePanel({
     required this.open,
     required this.width,
     required this.bottomReserve,
     required this.child,
+    this.left = 8,
   });
 
   final bool open;
   final double width;
   final double bottomReserve;
+  final double left;
   final Widget child;
 
   @override
@@ -419,14 +546,14 @@ class _SidePanelState extends State<_SidePanel> with SingleTickerProviderStateMi
   Widget build(BuildContext context) {
     final t = Curves.easeOutCubic.transform(_controller.value);
     return Positioned(
-      left: 8,
+      left: widget.left,
       top: 56,
       bottom: widget.bottomReserve,
       width: widget.width * t,
       child: IgnorePointer(
         ignoring: t == 0,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: const BorderRadius.horizontal(left: Radius.circular(14)),
           child: OverflowBox(
             alignment: Alignment.centerLeft,
             minWidth: widget.width,
@@ -438,8 +565,12 @@ class _SidePanelState extends State<_SidePanel> with SingleTickerProviderStateMi
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     color: C.surface,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: C.border),
+                    borderRadius: const BorderRadius.horizontal(left: Radius.circular(14)),
+                    border: Border(
+                      left: BorderSide(color: C.border),
+                      top: BorderSide(color: C.border),
+                      bottom: BorderSide(color: C.border),
+                    ),
                   ),
                   child: _shown ?? widget.child,
                 ),
@@ -452,135 +583,367 @@ class _SidePanelState extends State<_SidePanel> with SingleTickerProviderStateMi
   }
 }
 
-class _Preview extends StatelessWidget {
-  const _Preview();
+class _Preview extends StatefulWidget {
+  const _Preview({required this.client, this.onTap});
+
+  final CameraClient client;
+  final VoidCallback? onTap;
+
+  @override
+  State<_Preview> createState() => _PreviewState();
+}
+
+class _PreviewState extends State<_Preview> {
+  late int _width = widget.client.snapshot.previewWidth;
+  late int _height = widget.client.snapshot.previewHeight;
+  late int _textureId = widget.client.snapshot.textureId;
+  final TransformationController _zoom = TransformationController();
+  int? _lastSurfaceW;
+  int? _lastSurfaceH;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.client.addListener(_syncPreview);
+  }
+
+  @override
+  void didUpdateWidget(covariant _Preview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.client != widget.client) {
+      oldWidget.client.removeListener(_syncPreview);
+      widget.client.addListener(_syncPreview);
+      _syncPreview();
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.client.removeListener(_syncPreview);
+    _zoom.dispose();
+    super.dispose();
+  }
+
+  void _syncPreview() {
+    final snapshot = widget.client.snapshot;
+    if (snapshot.previewWidth == _width &&
+        snapshot.previewHeight == _height &&
+        snapshot.textureId == _textureId) {
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _width = snapshot.previewWidth;
+      _height = snapshot.previewHeight;
+      _textureId = snapshot.textureId;
+    });
+  }
+
+  void _resetZoom() {
+    _zoom.value = Matrix4.identity();
+  }
+
+  void _reportCameraSurfaceSize() {
+    final width = _width.clamp(1, 8192);
+    final height = _height.clamp(1, 8192);
+    if (width == _lastSurfaceW && height == _lastSurfaceH) {
+      return;
+    }
+    _lastSurfaceW = width;
+    _lastSurfaceH = height;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      // 缓冲尺寸跟采集分辨率一致，由 Flutter 把 Texture 放大居中；
+      // 用显示尺寸当缓冲时，OpenGL 容易只画在角上留下大块黑边。
+      widget.client.setSurfaceSize(width, height);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return PlatformViewLink(
-      viewType: 'ausbc-preview',
-      surfaceFactory: (context, controller) {
-        return AndroidViewSurface(
-          controller: controller as AndroidViewController,
-          gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{},
-          hitTestBehavior: PlatformViewHitTestBehavior.opaque,
-        );
-      },
-      onCreatePlatformView: (params) {
-        final view = PlatformViewsService.initExpensiveAndroidView(
-          id: params.id,
-          viewType: 'ausbc-preview',
-          layoutDirection: TextDirection.ltr,
-          creationParams: const <String, dynamic>{},
-          creationParamsCodec: const StandardMessageCodec(),
-          onFocus: () => params.onFocusChanged(true),
-        );
-        view.addOnPlatformViewCreatedListener(params.onPlatformViewCreated);
-        view.create();
-        return view;
-      },
+    _reportCameraSurfaceSize();
+    final ratio = previewAspectRatio(width: _width, height: _height);
+    return ColoredBox(
+      color: Colors.black,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final roomW = constraints.maxWidth;
+          final roomH = constraints.maxHeight;
+          // cover：铺满屏幕并居中裁剪；顶栏浮在画面上，不再留黑边。
+          var viewW = roomW;
+          var viewH = viewW / ratio;
+          if (viewH < roomH) {
+            viewH = roomH;
+            viewW = viewH * ratio;
+          }
+          final left = (roomW - viewW) / 2;
+          final top = (roomH - viewH) / 2;
+          final frame = Positioned(
+            left: left,
+            top: top,
+            width: viewW,
+            height: viewH,
+            child: _textureId < 0
+                ? const SizedBox.expand()
+                : Texture(textureId: _textureId, filterQuality: FilterQuality.low),
+          );
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: widget.onTap,
+            onDoubleTap: _resetZoom,
+            child: ClipRect(
+              child: InteractiveViewer(
+                transformationController: _zoom,
+                alignment: Alignment.center,
+                constrained: false,
+                minScale: previewZoomMin,
+                maxScale: previewZoomMax,
+                clipBehavior: Clip.hardEdge,
+                panEnabled: true,
+                scaleEnabled: true,
+                child: SizedBox(
+                  width: constraints.maxWidth,
+                  height: constraints.maxHeight,
+                  child: Stack(children: [frame]),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }
 
-class _Rail extends StatelessWidget {
-  const _Rail({required this.selected, required this.onSelect, required this.showTools});
+const _toolSectionIds = <String>['picture', 'video', 'effects', 'audio'];
 
+/// 左侧工具抽屉宽度：图标 + 文案。
+const drawerRailWidth = 88.0;
+
+IconData _toolSectionIcon(String id) {
+  return switch (id) {
+    'video' => Icons.videocam_outlined,
+    'effects' => Icons.auto_awesome_outlined,
+    'audio' => Icons.graphic_eq,
+    'appearance' => Icons.palette_outlined,
+    'settings' => Icons.settings_outlined,
+    _ => Icons.tune,
+  };
+}
+
+IconData _themeIcon(String id) {
+  return switch (id) {
+    'light' => Icons.light_mode_outlined,
+    'dark' => Icons.dark_mode_outlined,
+    _ => Icons.brightness_auto_outlined,
+  };
+}
+
+/// 左侧抽屉：平时不占布局，打开后叠在预览上滑入。
+class _DrawerRail extends StatefulWidget {
+  const _DrawerRail({
+    required this.open,
+    required this.selected,
+    required this.onSelect,
+  });
+
+  final bool open;
   final String? selected;
   final ValueChanged<String> onSelect;
-  final bool showTools;
+
+  @override
+  State<_DrawerRail> createState() => _DrawerRailState();
+}
+
+class _DrawerRailState extends State<_DrawerRail> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: panelDuration,
+    value: widget.open ? 1 : 0,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(() => setState(() {}));
+  }
+
+  @override
+  void didUpdateWidget(_DrawerRail old) {
+    super.didUpdateWidget(old);
+    if (old.open == widget.open) {
+      return;
+    }
+    if (widget.open) {
+      _controller.forward();
+    } else {
+      _controller.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return ColoredBox(
-      color: C.bg,
-      child: SizedBox(
-        width: 64,
-        child: Column(
-          children: [
-            const SizedBox(height: 10),
-            SvgPicture.asset('assets/brand/ic_launcher.svg', width: 32, height: 32),
-            const SizedBox(height: 8),
-            if (showTools)
+    final t = Curves.easeOutCubic.transform(_controller.value);
+    if (t == 0) {
+      return const SizedBox.shrink();
+    }
+    return Positioned(
+      left: 8 + (t - 1) * (drawerRailWidth + 8),
+      top: 56,
+      bottom: 12,
+      width: drawerRailWidth,
+      child: Opacity(
+        opacity: t,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: C.surface.withValues(alpha: 0.96),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: C.border.withValues(alpha: 0.7)),
+            boxShadow: [
+              BoxShadow(
+                color: C.menuShadow.withValues(alpha: 0.18),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 14),
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: C.surfaceHi,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: SvgPicture.asset('assets/brand/ic_launcher.svg', width: 24, height: 24),
+              ),
+              const SizedBox(height: 10),
               Expanded(
                 child: ListView(
-                  padding: EdgeInsets.zero,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
                   children: [
-                    _RailButton(
-                      id: 'picture',
-                      icon: Icons.tune,
-                      tooltip: l10n.sectionTitle('picture'),
-                      selected: selected,
-                      onSelect: onSelect,
+                    for (final id in _toolSectionIds)
+                      _DrawerRailButton(
+                        icon: _toolSectionIcon(id),
+                        label: l10n.sectionTitle(id),
+                        active: widget.selected == id,
+                        onTap: () => widget.onSelect(id),
+                      ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 4, 18, 8),
+                child: Container(height: 1, color: C.hairline),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Column(
+                  children: [
+                    _DrawerRailButton(
+                      icon: _toolSectionIcon('appearance'),
+                      label: l10n.sectionTitle('appearance'),
+                      active: widget.selected == 'appearance',
+                      onTap: () => widget.onSelect('appearance'),
                     ),
-                    _RailButton(
-                      id: 'video',
-                      icon: Icons.aspect_ratio,
-                      tooltip: l10n.sectionTitle('video'),
-                      selected: selected,
-                      onSelect: onSelect,
-                    ),
-                    _RailButton(
-                      id: 'effects',
-                      icon: Icons.auto_awesome_outlined,
-                      tooltip: l10n.sectionTitle('effects'),
-                      selected: selected,
-                      onSelect: onSelect,
-                    ),
-                    _RailButton(
-                      id: 'audio',
-                      icon: Icons.graphic_eq,
-                      tooltip: l10n.sectionTitle('audio'),
-                      selected: selected,
-                      onSelect: onSelect,
+                    _DrawerRailButton(
+                      icon: _toolSectionIcon('settings'),
+                      label: l10n.sectionTitle('settings'),
+                      active: widget.selected == 'settings',
+                      onTap: () => widget.onSelect('settings'),
                     ),
                   ],
                 ),
-              )
-            else
-              const Spacer(),
-            _RailButton(
-              id: 'settings',
-              icon: Icons.settings_outlined,
-              tooltip: l10n.sectionTitle('settings'),
-              selected: selected,
-              onSelect: onSelect,
-            ),
-            const SizedBox(height: 8),
-          ],
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _RailButton extends StatelessWidget {
-  const _RailButton({
-    required this.id,
+class _DrawerRailButton extends StatelessWidget {
+  const _DrawerRailButton({
     required this.icon,
-    required this.tooltip,
-    required this.selected,
-    required this.onSelect,
+    required this.label,
+    required this.active,
+    required this.onTap,
   });
 
-  final String id;
   final IconData icon;
-  final String tooltip;
-  final String? selected;
-  final ValueChanged<String> onSelect;
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final active = selected == id;
+    final iconColor = active ? C.blue2 : C.fg68;
+    final labelColor = active ? C.fg : C.fg48;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Center(
-        child: CircleBtn(
-          icon: icon,
-          tooltip: tooltip,
-          active: active,
-          onTap: () => onSelect(id),
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Pressable(
+        onTap: onTap,
+        pressedOpacity: 0.72,
+        child: Semantics(
+          button: true,
+          label: label,
+          selected: active,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            padding: const EdgeInsets.fromLTRB(6, 8, 6, 8),
+            decoration: BoxDecoration(
+              color: active ? C.blue2.withValues(alpha: 0.12) : Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOutCubic,
+                  width: 40,
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: active ? C.blue2.withValues(alpha: 0.16) : C.surfaceHi,
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  child: Icon(icon, size: 20, color: iconColor),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11,
+                    letterSpacing: 0.1,
+                    fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                    color: labelColor,
+                    height: 1.05,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -591,12 +954,16 @@ class _Panel extends StatelessWidget {
   const _Panel({
     required this.client,
     required this.locales,
+    required this.presets,
+    required this.themes,
     required this.section,
     required this.onClose,
   });
 
   final CameraClient client;
   final LocaleController locales;
+  final PreviewPresetController presets;
+  final ThemeController themes;
   final String section;
   final VoidCallback onClose;
 
@@ -615,7 +982,7 @@ class _Panel extends StatelessWidget {
                 tooltip: l10n.close,
                 visualDensity: VisualDensity.compact,
                 onPressed: onClose,
-                icon: const Icon(Icons.close, size: 18, color: C.fg48),
+                icon: Icon(Icons.close, size: 18, color: C.fg48),
               ),
             ],
           ),
@@ -633,11 +1000,46 @@ class _Panel extends StatelessWidget {
   Widget _body(BuildContext context, CameraSnapshot snapshot) {
     return switch (section) {
       'picture' => _PictureList(client: client, snapshot: snapshot),
-      'video' => _VideoList(client: client, snapshot: snapshot),
+      'video' => _VideoList(client: client, presets: presets, snapshot: snapshot),
       'effects' => _EffectList(client: client, snapshot: snapshot),
       'audio' => _AudioList(client: client, snapshot: snapshot),
-      _ => _SettingsList(client: client, locales: locales, snapshot: snapshot),
+      'appearance' => _AppearanceList(themes: themes),
+      _ => _SettingsList(client: client, locales: locales, presets: presets, snapshot: snapshot),
     };
+  }
+}
+
+class _AppearanceList extends StatelessWidget {
+  const _AppearanceList({required this.themes});
+
+  final ThemeController themes;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return ListenableBuilder(
+      listenable: themes,
+      builder: (context, _) {
+        final code = themes.code;
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(8, 4, 8, 16),
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: Text(l10n.appearance, style: T.section),
+            ),
+            for (final id in AppThemes.ids)
+              SheetRow(
+                title: l10n.themeLabel(id),
+                leading: Icon(_themeIcon(id), size: 18, color: C.fg68),
+                chevron: false,
+                trailing: id == code ? Icon(Icons.check, size: 18, color: C.fg) : null,
+                onTap: () => themes.setCode(id),
+              ),
+          ],
+        );
+      },
+    );
   }
 }
 
@@ -682,7 +1084,7 @@ class _PictureList extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: Pressable(
               onTap: client.resetImage,
-              child: Text(l10n.resetDefaults, style: const TextStyle(fontSize: 14, color: C.blue2)),
+              child: Text(l10n.resetDefaults, style: TextStyle(fontSize: 14, color: C.blue2)),
             ),
           ),
         ),
@@ -692,52 +1094,76 @@ class _PictureList extends StatelessWidget {
 }
 
 class _VideoList extends StatelessWidget {
-  const _VideoList({required this.client, required this.snapshot});
+  const _VideoList({required this.client, required this.presets, required this.snapshot});
 
   final CameraClient client;
+  final PreviewPresetController presets;
   final CameraSnapshot snapshot;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final busy = snapshot.isRecording;
-    return ListView(
-      padding: const EdgeInsets.only(bottom: 12),
-      children: [
-        Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 4), child: Text(l10n.format, style: T.section)),
-        _choice(context, 'MJPEG', snapshot.previewFormat == 'mjpeg', busy ? null : () => client.selectFormat('mjpeg')),
-        _choice(context, 'YUYV', snapshot.previewFormat == 'yuyv', busy ? null : () => client.selectFormat('yuyv')),
-        Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text(l10n.orientation, style: T.section)),
-        for (final id in rotateOptionIds)
-          _choice(
-            context,
-            l10n.rotateLabel(id),
-            snapshot.rotate == id,
-            busy ? null : () => client.selectRotate(id),
-          ),
-        Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text(l10n.resolution, style: T.section)),
-        if (snapshot.resolutions.isEmpty)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Text(l10n.resolutionsAfterConnect, style: T.small),
-          )
-        else
-          for (final size in snapshot.resolutions)
-            _choice(
-              context,
-              size.label,
-              snapshot.previewWidth == size.width && snapshot.previewHeight == size.height,
-              busy ? null : () => client.selectResolution(size.width, size.height),
-            ),
-        Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text(l10n.frameRate, style: T.section)),
-        for (final fps in snapshot.frameRates)
-          _choice(
-            context,
-            l10n.fpsOption(fps),
-            snapshot.previewFps == fps,
-            busy ? null : () => client.selectFps(fps),
-          ),
-      ],
+    return ListenableBuilder(
+      listenable: presets,
+      builder: (context, _) {
+        final catalog = availablePreviewPresets(
+          resolutions: snapshot.resolutions.map((size) => (width: size.width, height: size.height)),
+          frameRates: snapshot.frameRates,
+          catalog: presets.items,
+        );
+        return ListView(
+          padding: const EdgeInsets.only(bottom: 12),
+          children: [
+            Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 4), child: Text(l10n.format, style: T.section)),
+            _choice(context, 'MJPEG', snapshot.previewFormat == 'mjpeg', busy ? null : () => client.selectFormat('mjpeg')),
+            _choice(context, 'YUYV', snapshot.previewFormat == 'yuyv', busy ? null : () => client.selectFormat('yuyv')),
+            Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text(l10n.orientation, style: T.section)),
+            for (final id in rotateOptionIds)
+              _choice(
+                context,
+                l10n.rotateLabel(id),
+                snapshot.rotate == id,
+                busy ? null : () => client.selectRotate(id),
+              ),
+            Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text(l10n.previewPresets, style: T.section)),
+            if (snapshot.resolutions.isEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: Text(l10n.resolutionsAfterConnect, style: T.small),
+              )
+            else ...[
+              for (final preset in catalog)
+                _choice(
+                  context,
+                  preset.label,
+                  snapshot.previewWidth == preset.width &&
+                      snapshot.previewHeight == preset.height &&
+                      snapshot.previewFps == preset.fps,
+                  busy ? null : () => applyPreviewPreset(client, preset),
+                ),
+              SheetRow(
+                title: l10n.presetCustom,
+                onTap: busy
+                    ? null
+                    : () => showCustomPreviewPicker(context: context, client: client, presets: presets),
+              ),
+              SheetRow(
+                title: l10n.presetManage,
+                onTap: () => showPreviewPresetManager(context: context, client: client, presets: presets),
+              ),
+              Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text(l10n.frameRate, style: T.section)),
+              for (final fps in snapshot.frameRates)
+                _choice(
+                  context,
+                  l10n.fpsOption(fps),
+                  snapshot.previewFps == fps,
+                  busy ? null : () => client.selectFps(fps),
+                ),
+            ],
+          ],
+        );
+      },
     );
   }
 
@@ -745,7 +1171,7 @@ class _VideoList extends StatelessWidget {
     return SheetRow(
       title: label,
       chevron: false,
-      trailing: selected ? const Icon(Icons.check, size: 18, color: C.fg) : null,
+      trailing: selected ? Icon(Icons.check, size: 18, color: C.fg) : null,
       onTap: onTap,
     );
   }
@@ -778,7 +1204,7 @@ class _EffectList extends StatelessWidget {
     return SheetRow(
       title: label,
       chevron: false,
-      trailing: selected ? const Icon(Icons.check, size: 18, color: C.fg) : null,
+      trailing: selected ? Icon(Icons.check, size: 18, color: C.fg) : null,
       onTap: onTap,
     );
   }
@@ -814,17 +1240,23 @@ class _AudioList extends StatelessWidget {
     return SheetRow(
       title: label,
       chevron: false,
-      trailing: selected ? const Icon(Icons.check, size: 18, color: C.fg) : null,
+      trailing: selected ? Icon(Icons.check, size: 18, color: C.fg) : null,
       onTap: onTap,
     );
   }
 }
 
 class _SettingsList extends StatelessWidget {
-  const _SettingsList({required this.client, required this.locales, required this.snapshot});
+  const _SettingsList({
+    required this.client,
+    required this.locales,
+    required this.presets,
+    required this.snapshot,
+  });
 
   final CameraClient client;
   final LocaleController locales;
+  final PreviewPresetController presets;
   final CameraSnapshot snapshot;
 
   @override
@@ -845,11 +1277,12 @@ class _SettingsList extends StatelessWidget {
               subtitleMaxLines: 4,
               chevron: false,
             ),
+            PreviewPresetSettingsSection(client: client, presets: presets, snapshot: snapshot),
             Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text(l10n.language, style: T.section)),
             SheetRow(
               title: l10n.languageSystem,
               chevron: false,
-              trailing: localeCode == null ? const Icon(Icons.check, size: 18, color: C.fg) : null,
+              trailing: localeCode == null ? Icon(Icons.check, size: 18, color: C.fg) : null,
               onTap: () => locales.setLocaleCode(null),
             ),
             for (final locale in AppLocales.supported)
@@ -857,7 +1290,7 @@ class _SettingsList extends StatelessWidget {
                 title: AppLocales.displayName(locale),
                 chevron: false,
                 trailing: localeCode == AppLocales.codeOf(locale)
-                    ? const Icon(Icons.check, size: 18, color: C.fg)
+                    ? Icon(Icons.check, size: 18, color: C.fg)
                     : null,
                 onTap: () => locales.setLocaleCode(AppLocales.codeOf(locale)),
               ),
@@ -870,7 +1303,7 @@ class _SettingsList extends StatelessWidget {
               SheetRow(
                 title: minutes == 0 ? l10n.segmentNone : l10n.segmentMinutes(minutes),
                 chevron: false,
-                trailing: snapshot.segmentMinutes == minutes ? const Icon(Icons.check, size: 18, color: C.fg) : null,
+                trailing: snapshot.segmentMinutes == minutes ? Icon(Icons.check, size: 18, color: C.fg) : null,
                 onTap: snapshot.isRecording ? null : () => client.selectSegment(minutes),
               ),
           ],
@@ -894,7 +1327,7 @@ class _StatusCluster extends StatelessWidget {
         final snapshot = client.snapshot;
         final opened = snapshot.connection == 'opened';
         final child = Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
@@ -909,19 +1342,20 @@ class _StatusCluster extends StatelessWidget {
                   format: snapshot.previewFormat,
                   fps: snapshot.previewFps,
                 ),
+                textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 11.5, color: soft ? C.fg30 : C.fg42),
               ),
             if (snapshot.isRecording)
               Text(
                 formatElapsed(snapshot.elapsedSeconds),
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: C.error),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: C.error),
               ),
           ],
         );
         if (soft) {
           return Align(
-            alignment: Alignment.topRight,
-            child: Padding(padding: const EdgeInsets.all(14), child: child),
+            alignment: Alignment.topCenter,
+            child: Padding(padding: const EdgeInsets.fromLTRB(14, 14, 14, 0), child: child),
           );
         }
         return child;
@@ -930,11 +1364,156 @@ class _StatusCluster extends StatelessWidget {
   }
 }
 
-class _ConnectionMessage extends StatelessWidget {
-  const _ConnectionMessage({required this.client, required this.onOpenDevices});
+const _presetCustomId = '__custom__';
+const _presetManageId = '__manage__';
+
+class _PreviewStatusMenu extends StatelessWidget {
+  const _PreviewStatusMenu({required this.client, required this.presets});
 
   final CameraClient client;
-  final VoidCallback onOpenDevices;
+  final PreviewPresetController presets;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return ListenableBuilder(
+      listenable: Listenable.merge([client, presets]),
+      builder: (context, _) {
+        final snapshot = client.snapshot;
+        final opened = snapshot.connection == 'opened';
+        final busy = snapshot.isRecording;
+        final catalog = availablePreviewPresets(
+          resolutions: snapshot.resolutions.map((size) => (width: size.width, height: size.height)),
+          frameRates: snapshot.frameRates,
+          catalog: presets.items,
+        );
+        final label = opened
+            ? l10n.previewStatusLabel(
+                width: snapshot.previewWidth,
+                height: snapshot.previewHeight,
+                format: snapshot.previewFormat,
+                fps: snapshot.previewFps,
+              )
+            : l10n.fpsLabel(snapshot.frameRate);
+        final currentId = '${snapshot.previewWidth}x${snapshot.previewHeight}@${snapshot.previewFps}';
+        final items = <HoldMenuItem>[
+          if (catalog.isEmpty)
+            HoldMenuItem(
+              '__empty__',
+              opened ? l10n.resolutionsAfterConnect : l10n.waitingUsb,
+              enabled: false,
+              maxLines: 2,
+            )
+          else
+            for (final preset in catalog)
+              HoldMenuItem(
+                preset.id,
+                preset.label,
+                subtitle: snapshot.previewFormat.toUpperCase(),
+                leading: Icon(Icons.aspect_ratio, size: 16, color: C.fg68),
+                checked: preset.id == currentId,
+                enabled: !busy,
+                maxLines: 1,
+              ),
+          HoldMenuItem(
+            _presetCustomId,
+            l10n.presetCustom,
+            leading: Icon(Icons.tune, size: 16, color: C.fg68),
+            enabled: opened && !busy && snapshot.resolutions.isNotEmpty,
+            group: 1,
+            maxLines: 1,
+          ),
+          HoldMenuItem(
+            _presetManageId,
+            l10n.presetManage,
+            leading: Icon(Icons.edit_outlined, size: 16, color: C.fg68),
+            enabled: opened,
+            group: 1,
+            maxLines: 1,
+          ),
+        ];
+        return Semantics(
+          button: true,
+          label: l10n.resolution,
+          child: HoldMenu(
+            width: 280,
+            centered: true,
+            header: l10n.resolution,
+            enabled: opened && !busy,
+            items: items,
+            onSelect: (id, _) async {
+              if (id == _presetCustomId) {
+                await showCustomPreviewPicker(context: context, client: client, presets: presets);
+                return;
+              }
+              if (id == _presetManageId) {
+                await showPreviewPresetManager(context: context, client: client, presets: presets);
+                return;
+              }
+              final preset = catalog.where((item) => item.id == id).firstOrNull;
+              if (preset != null) {
+                await applyPreviewPreset(client, preset);
+              }
+            },
+            builder: (context, open, pressed) {
+              return Container(
+                padding: const EdgeInsets.fromLTRB(14, 6, 14, 6),
+                decoration: ShapeDecoration(
+                  color: open ? C.surfaceHi : C.chromeScrim,
+                  shape: StadiumBorder(side: BorderSide(color: open ? C.fg42 : C.border)),
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 14),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            l10n.fpsLabel(snapshot.frameRate),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 13, color: C.fg68),
+                          ),
+                          if (opened)
+                            Text(
+                              label,
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 11.5, color: C.fg42),
+                            ),
+                          if (snapshot.isRecording)
+                            Text(
+                              formatElapsed(snapshot.elapsedSeconds),
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.error),
+                            ),
+                        ],
+                      ),
+                    ),
+                    Positioned(
+                      right: 0,
+                      child: AnimatedRotation(
+                        turns: open ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 180),
+                        child: Icon(Icons.expand_more, size: 15, color: C.fg68),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ConnectionMessage extends StatelessWidget {
+  const _ConnectionMessage({required this.client});
+
+  final CameraClient client;
 
   @override
   Widget build(BuildContext context) {
@@ -951,6 +1530,7 @@ class _ConnectionMessage extends StatelessWidget {
         final detail = isError
             ? l10n.platformMessage(snapshot.message, fallback: l10n.errorHint)
             : (snapshot.devices.isEmpty ? l10n.waitingHintEmpty : l10n.waitingHintDetected);
+        final actionLabel = isError ? l10n.retryDevice : l10n.selectDevice;
         return Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 28),
@@ -962,33 +1542,45 @@ class _ConnectionMessage extends StatelessWidget {
                 Text(
                   headline,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: C.fg),
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: C.fg),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   detail,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 13.5, height: 1.45, color: C.fg42),
+                  style: TextStyle(fontSize: 13.5, height: 1.45, color: C.fg42),
                 ),
                 const SizedBox(height: 18),
-                Pressable(
-                  onTap: onOpenDevices,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: C.surfaceHi,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: C.border),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(isError ? Icons.refresh : Icons.usb, size: 16, color: C.fg68),
-                        const SizedBox(width: 8),
-                        Text(isError ? l10n.retryDevice : l10n.selectDevice, style: T.row),
-                      ],
-                    ),
-                  ),
+                HoldMenu(
+                  width: 280,
+                  centered: true,
+                  header: l10n.devices,
+                  items: _deviceMenuItems(l10n, snapshot),
+                  onSelect: (id, _) => _onDeviceMenuSelect(client, id),
+                  builder: (context, open, pressed) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: open ? C.surface : C.surfaceHi,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: open ? C.fg42 : C.border),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(isError ? Icons.refresh : Icons.usb, size: 16, color: C.fg68),
+                          const SizedBox(width: 8),
+                          Text(actionLabel, style: T.row),
+                          const SizedBox(width: 4),
+                          AnimatedRotation(
+                            turns: open ? 0.5 : 0,
+                            duration: const Duration(milliseconds: 180),
+                            child: Icon(Icons.expand_more, size: 16, color: C.fg68),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -1022,7 +1614,7 @@ class _CaptureBar extends StatelessWidget {
               children: [
                 DecoratedBox(
                   decoration: BoxDecoration(
-                    color: const Color(0xCC1C1B18),
+                    color: C.chromeScrim,
                     borderRadius: BorderRadius.circular(22),
                     border: Border.all(color: C.border),
                   ),

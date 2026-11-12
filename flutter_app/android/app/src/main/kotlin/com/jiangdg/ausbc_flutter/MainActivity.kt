@@ -10,7 +10,6 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
-import io.flutter.plugin.common.StandardMessageCodec
 
 class MainActivity : FlutterActivity() {
     private var permissionResult: MethodChannel.Result? = null
@@ -23,10 +22,13 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         val messenger = flutterEngine.dartExecutor.binaryMessenger
-        flutterEngine.platformViewsController.registry.registerViewFactory(
-            PREVIEW_VIEW_TYPE,
-            UsbCameraViewFactory(this, StandardMessageCodec.INSTANCE),
-        )
+        if (UsbCameraSessionHolder.session == null) {
+            val entry = flutterEngine.renderer.createSurfaceTexture()
+            val session = UsbCameraSession(this, entry)
+            UsbCameraSessionHolder.session = session
+            UsbCameraSessionHolder.textureId = entry.id()
+            session.publish()
+        }
         MethodChannel(messenger, HOST_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "ensurePermissions" -> ensurePermissions(result)
@@ -51,6 +53,14 @@ class MainActivity : FlutterActivity() {
                 UsbCameraSessionHolder.sink = null
             }
         })
+    }
+
+    override fun onDestroy() {
+        UsbCameraSessionHolder.session?.release()
+        UsbCameraSessionHolder.session = null
+        UsbCameraSessionHolder.textureId = -1L
+        UsbCameraSessionHolder.sink = null
+        super.onDestroy()
     }
 
     override fun onRequestPermissionsResult(
@@ -96,7 +106,6 @@ class MainActivity : FlutterActivity() {
     }
 
     companion object {
-        const val PREVIEW_VIEW_TYPE = "ausbc-preview"
         const val HOST_CHANNEL = "com.jiangdg.ausbc/host"
         const val CAMERA_CHANNEL = "com.jiangdg.ausbc/camera"
         const val EVENT_CHANNEL = "com.jiangdg.ausbc/events"

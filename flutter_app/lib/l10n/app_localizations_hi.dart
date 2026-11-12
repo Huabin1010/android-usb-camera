@@ -214,6 +214,63 @@ class AppLocalizationsHi extends AppLocalizations {
   String get languageSystem => 'सिस्टम डिफ़ॉल्ट';
 
   @override
+  String get appearance => 'दिखावट';
+
+  @override
+  String get themeSystem => 'सिस्टम डिफ़ॉल्ट';
+
+  @override
+  String get themeLight => 'हल्का';
+
+  @override
+  String get themeDark => 'गहरा';
+
+  @override
+  String get tools => 'नियंत्रण';
+
+  @override
+  String get previewPresets => 'प्रीसेट';
+
+  @override
+  String get presetCustom => 'कस्टम…';
+
+  @override
+  String get presetManage => 'प्रीसेट प्रबंधित करें';
+
+  @override
+  String get presetAddCurrent => 'वर्तमान जोड़ें';
+
+  @override
+  String get presetAdd => 'प्रीसेट जोड़ें';
+
+  @override
+  String get presetReset => 'डिफ़ॉल्ट पुनर्स्थापित करें';
+
+  @override
+  String get presetDelete => 'हटाएँ';
+
+  @override
+  String get presetEmpty => 'कोई प्रीसेट नहीं';
+
+  @override
+  String get presetAdded => 'जोड़ा गया';
+
+  @override
+  String get presetExists => 'पहले से मौजूद';
+
+  @override
+  String get presetPickResolution => 'रिज़ॉल्यूशन चुनें';
+
+  @override
+  String get presetPickFps => 'फ़्रेम दर चुनें';
+
+  @override
+  String get presetSave => 'प्रीसेट के रूप में सहेजें';
+
+  @override
+  String get presetApply => 'लागू करें';
+
+  @override
   String get waitingUsb => 'USB कैमरा की प्रतीक्षा';
 
   @override

@@ -216,6 +216,63 @@ class AppLocalizationsFr extends AppLocalizations {
   String get languageSystem => 'Par défaut du système';
 
   @override
+  String get appearance => 'Apparence';
+
+  @override
+  String get themeSystem => 'Par défaut du système';
+
+  @override
+  String get themeLight => 'Clair';
+
+  @override
+  String get themeDark => 'Sombre';
+
+  @override
+  String get tools => 'Réglages';
+
+  @override
+  String get previewPresets => 'Préréglages';
+
+  @override
+  String get presetCustom => 'Personnalisé…';
+
+  @override
+  String get presetManage => 'Gérer les préréglages';
+
+  @override
+  String get presetAddCurrent => 'Ajouter l’actuel';
+
+  @override
+  String get presetAdd => 'Ajouter un préréglage';
+
+  @override
+  String get presetReset => 'Réinitialiser';
+
+  @override
+  String get presetDelete => 'Supprimer';
+
+  @override
+  String get presetEmpty => 'Aucun préréglage';
+
+  @override
+  String get presetAdded => 'Ajouté';
+
+  @override
+  String get presetExists => 'Déjà présent';
+
+  @override
+  String get presetPickResolution => 'Choisir la résolution';
+
+  @override
+  String get presetPickFps => 'Choisir le fps';
+
+  @override
+  String get presetSave => 'Enregistrer comme préréglage';
+
+  @override
+  String get presetApply => 'Appliquer';
+
+  @override
   String get waitingUsb => 'En attente de caméra USB';
 
   @override

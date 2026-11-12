@@ -111,6 +111,12 @@ class CameraSession(
         })
     }
 
+    /** Flutter Texture / custom surface — no View lifecycle callbacks. */
+    fun bindPreview(aspect: IAspectRatio) {
+        preview = aspect
+        register()
+    }
+
     fun register() {
         if (client != null) {
             return
@@ -388,9 +394,15 @@ class CameraSession(
     private fun openPreview() {
         val camera = peekCamera() ?: return
         val target = preview
-        val view = if (target is TextureView || target is SurfaceView) target else null
-        camera.openCamera(view, requestProvider())
+        // Prefer the real preview target (TextureView / SurfaceView / Flutter IAspectRatio).
+        camera.openCamera(target, requestProvider())
         camera.setCameraStateCallBack(stateBridge)
+        val width = target?.getSurfaceWidth() ?: 0
+        val height = target?.getSurfaceHeight() ?: 0
+        if (width > 0 && height > 0) {
+            // Unblock MultiCameraClient's size future without waiting for View layout.
+            mainHandler.post { camera.setRenderSize(width, height) }
+        }
     }
 
     private fun cancelCurrent() {

@@ -7,7 +7,7 @@
 | 项 | 说明 |
 | --- | --- |
 | 包名 | `com.jiangdg.ausbc.flutter` |
-| 版本 | 3.7.0（versionCode 130） |
+| 版本 | 3.7.4（versionCode 134） |
 | 系统 | Android 7.0+（minSdk 24），targetSdk 35 |
 | ABI | `armeabi-v7a`、`arm64-v8a`（不含 x86） |
 | 语言 | 跟随系统；设置内可切换。en / 简中 / 繁中 / ja / ko / es / pt / de / fr / ru / id / hi / ar |

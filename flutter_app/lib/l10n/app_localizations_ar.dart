@@ -214,6 +214,63 @@ class AppLocalizationsAr extends AppLocalizations {
   String get languageSystem => 'افتراضي النظام';
 
   @override
+  String get appearance => 'المظهر';
+
+  @override
+  String get themeSystem => 'افتراضي النظام';
+
+  @override
+  String get themeLight => 'فاتح';
+
+  @override
+  String get themeDark => 'داكن';
+
+  @override
+  String get tools => 'الضبط';
+
+  @override
+  String get previewPresets => 'إعدادات مسبقة';
+
+  @override
+  String get presetCustom => 'مخصص…';
+
+  @override
+  String get presetManage => 'إدارة الإعدادات';
+
+  @override
+  String get presetAddCurrent => 'إضافة الحالي';
+
+  @override
+  String get presetAdd => 'إضافة إعداد مسبق';
+
+  @override
+  String get presetReset => 'استعادة الافتراضي';
+
+  @override
+  String get presetDelete => 'إزالة';
+
+  @override
+  String get presetEmpty => 'لا إعدادات';
+
+  @override
+  String get presetAdded => 'تمت الإضافة';
+
+  @override
+  String get presetExists => 'موجود بالفعل';
+
+  @override
+  String get presetPickResolution => 'اختر الدقة';
+
+  @override
+  String get presetPickFps => 'اختر معدل الإطارات';
+
+  @override
+  String get presetSave => 'حفظ كإعداد مسبق';
+
+  @override
+  String get presetApply => 'تطبيق';
+
+  @override
   String get waitingUsb => 'بانتظار كاميرا USB';
 
   @override

@@ -210,6 +210,63 @@ class AppLocalizationsZh extends AppLocalizations {
   String get languageSystem => '跟随系统';
 
   @override
+  String get appearance => '外观';
+
+  @override
+  String get themeSystem => '跟随系统';
+
+  @override
+  String get themeLight => '浅色';
+
+  @override
+  String get themeDark => '暗色';
+
+  @override
+  String get tools => '调节项';
+
+  @override
+  String get previewPresets => '预览预设';
+
+  @override
+  String get presetCustom => '自定义…';
+
+  @override
+  String get presetManage => '管理预设';
+
+  @override
+  String get presetAddCurrent => '添加当前配置';
+
+  @override
+  String get presetAdd => '添加预设';
+
+  @override
+  String get presetReset => '恢复默认预设';
+
+  @override
+  String get presetDelete => '移除';
+
+  @override
+  String get presetEmpty => '还没有预设';
+
+  @override
+  String get presetAdded => '已加入预设';
+
+  @override
+  String get presetExists => '预设已存在';
+
+  @override
+  String get presetPickResolution => '选择分辨率';
+
+  @override
+  String get presetPickFps => '选择帧率';
+
+  @override
+  String get presetSave => '保存为预设';
+
+  @override
+  String get presetApply => '应用';
+
+  @override
   String get waitingUsb => '等待 USB 摄像头';
 
   @override
@@ -480,6 +537,63 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get languageSystem => '跟隨系統';
+
+  @override
+  String get appearance => '外觀';
+
+  @override
+  String get themeSystem => '跟隨系統';
+
+  @override
+  String get themeLight => '淺色';
+
+  @override
+  String get themeDark => '暗色';
+
+  @override
+  String get tools => '調節項';
+
+  @override
+  String get previewPresets => '預覽預設';
+
+  @override
+  String get presetCustom => '自訂…';
+
+  @override
+  String get presetManage => '管理預設';
+
+  @override
+  String get presetAddCurrent => '加入目前設定';
+
+  @override
+  String get presetAdd => '新增預設';
+
+  @override
+  String get presetReset => '恢復預設清單';
+
+  @override
+  String get presetDelete => '移除';
+
+  @override
+  String get presetEmpty => '尚無預設';
+
+  @override
+  String get presetAdded => '已加入預設';
+
+  @override
+  String get presetExists => '預設已存在';
+
+  @override
+  String get presetPickResolution => '選擇解析度';
+
+  @override
+  String get presetPickFps => '選擇幀率';
+
+  @override
+  String get presetSave => '儲存為預設';
+
+  @override
+  String get presetApply => '套用';
 
   @override
   String get waitingUsb => '等待 USB 攝影機';

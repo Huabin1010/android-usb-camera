@@ -1,11 +1,11 @@
 package com.jiangdg.ausbc_flutter
 
 import android.app.Activity
-import android.content.Context
+import android.graphics.SurfaceTexture
 import android.hardware.usb.UsbDevice
 import android.os.Handler
 import android.os.Looper
-import android.view.View
+import android.view.Surface
 import androidx.lifecycle.Observer
 import com.jiangdg.ausbc.callback.ICameraStateCallBack
 import com.jiangdg.ausbc.callback.ICaptureCallBack
@@ -19,52 +19,70 @@ import com.jiangdg.ausbc.render.effect.bean.CameraEffect
 import com.jiangdg.ausbc.render.env.RotateType
 import com.jiangdg.ausbc.utils.bus.BusKey
 import com.jiangdg.ausbc.utils.bus.EventBus
-import com.jiangdg.ausbc.widget.AspectRatioTextureView
+import com.jiangdg.ausbc.widget.IAspectRatio
 import com.jiangdg.uvc.UVCCamera
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
-import io.flutter.plugin.platform.PlatformView
-import io.flutter.plugin.platform.PlatformViewFactory
+import io.flutter.view.TextureRegistry
 
 internal object UsbCameraSessionHolder {
     var session: UsbCameraSession? = null
     var sink: EventChannel.EventSink? = null
+    var textureId: Long = -1L
 }
 
-internal class UsbCameraViewFactory(
-    private val activity: Activity,
-    codec: io.flutter.plugin.common.MessageCodec<Any>,
-) : PlatformViewFactory(codec) {
-    override fun create(context: Context, viewId: Int, args: Any?): PlatformView {
-        return UsbCameraPlatformView(activity)
-    }
-}
-
-internal class UsbCameraPlatformView(
-    activity: Activity,
-) : PlatformView {
-    private val textureView = AspectRatioTextureView(activity)
-    private val session = UsbCameraSession(activity, textureView)
+/**
+ * Bridges AUSBC OpenGL output into a Flutter [Texture] via [TextureRegistry].
+ * Avoids PlatformView / TextureView lockHardwareCanvas races that flash the preview.
+ */
+internal class FlutterPreviewSurface(
+    surfaceTexture: SurfaceTexture,
+    private var width: Int,
+    private var height: Int,
+) : IAspectRatio {
+    private val surface: Surface
 
     init {
-        UsbCameraSessionHolder.session = session
-        session.publish()
+        surfaceTexture.setDefaultBufferSize(width.coerceAtLeast(1), height.coerceAtLeast(1))
+        surface = Surface(surfaceTexture)
     }
 
-    override fun getView(): View = textureView
-
-    override fun dispose() {
-        if (UsbCameraSessionHolder.session === session) {
-            UsbCameraSessionHolder.session = null
+    override fun setAspectRatio(width: Int, height: Int) {
+        if (width <= 0 || height <= 0) {
+            return
         }
-        session.release()
+        this.width = width
+        this.height = height
+    }
+
+    fun setBufferSize(width: Int, height: Int, texture: SurfaceTexture) {
+        if (width <= 0 || height <= 0) {
+            return
+        }
+        this.width = width
+        this.height = height
+        texture.setDefaultBufferSize(width, height)
+    }
+
+    override fun getSurfaceWidth(): Int = width
+
+    override fun getSurfaceHeight(): Int = height
+
+    override fun getSurface(): Surface = surface
+
+    override fun postUITask(task: () -> Unit) {
+        Handler(Looper.getMainLooper()).post(task)
+    }
+
+    fun release() {
+        surface.release()
     }
 }
 
 internal class UsbCameraSession(
     private val activity: Activity,
-    textureView: AspectRatioTextureView,
+    private val textureEntry: TextureRegistry.SurfaceTextureEntry,
 ) {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val prefs = activity.getSharedPreferences(PREFS, Activity.MODE_PRIVATE)
@@ -93,6 +111,12 @@ internal class UsbCameraSession(
         )
         .create()
 
+    private val previewSurface = FlutterPreviewSurface(
+        textureEntry.surfaceTexture(),
+        request.previewWidth,
+        request.previewHeight,
+    )
+
     private val camera = CameraSession(
         context = activity,
         stateCallback = object : ICameraStateCallBack {
@@ -120,9 +144,17 @@ internal class UsbCameraSession(
     private var segmentMinutes = prefs.getInt(KEY_SEGMENT, 0)
     private var snackbar: String? = null
     private var timer: Runnable? = null
+    private var cachedResolutions: List<Map<String, Int>> = emptyList()
+    private var cachedFrameRates: List<Int> = emptyList()
+    private var surfaceWidth = request.previewWidth
+    private var surfaceHeight = request.previewHeight
 
     private val fpsObserver = Observer<Int> { value ->
-        frameRate = value ?: 0
+        val next = value ?: 0
+        if (next == frameRate) {
+            return@Observer
+        }
+        frameRate = next
         publish()
     }
 
@@ -142,7 +174,6 @@ internal class UsbCameraSession(
             mainHandler.post {
                 stopTimer()
                 recording = false
-                // Stable key for Flutter l10n; engine detail stays in logs via message when needed.
                 toast(MSG_SAVE_FAILED)
             }
         }
@@ -159,14 +190,17 @@ internal class UsbCameraSession(
         }
     }
 
+    val textureId: Long get() = textureEntry.id()
+
     init {
         camera.onDevicesChanged = {
             mainHandler.post {
                 refreshDevices()
+                refreshSizeCaches()
                 publish()
             }
         }
-        camera.bindTextureView(textureView)
+        camera.bindPreview(previewSurface)
         EventBus.with<Int>(BusKey.KEY_FRAME_RATE).observeForever(fpsObserver)
     }
 
@@ -188,6 +222,7 @@ internal class UsbCameraSession(
             "toggleMic" -> toggleMic()
             "applyEffect" -> applyEffect(call.argument<String>("kind"), call.argument<Int>("id"))
             "retry" -> retry()
+            "setSurfaceSize" -> setSurfaceSize(call.argument<Int>("width"), call.argument<Int>("height"))
             else -> {
                 result.notImplemented()
                 return
@@ -211,6 +246,8 @@ internal class UsbCameraSession(
         stopTimer()
         EventBus.with<Int>(BusKey.KEY_FRAME_RATE).removeObserver(fpsObserver)
         camera.release()
+        previewSurface.release()
+        textureEntry.release()
     }
 
     private fun onState(code: ICameraStateCallBack.State, msg: String?) {
@@ -231,8 +268,11 @@ internal class UsbCameraSession(
             camera.getCurrentPreviewSize()?.let { size ->
                 request.previewWidth = size.width
                 request.previewHeight = size.height
+                previewSurface.setAspectRatio(size.width, size.height)
             }
             refreshDevices()
+            refreshSizeCaches()
+            applySurfaceSize(surfaceWidth, surfaceHeight)
         }
         if (code == ICameraStateCallBack.State.ERROR) {
             snackbar = MSG_CAMERA_ERROR
@@ -259,6 +299,7 @@ internal class UsbCameraSession(
             "isRecording" to recording,
             "elapsedSeconds" to elapsedSeconds,
             "frameRate" to frameRate,
+            "textureId" to textureId,
             "devices" to devices.map { device ->
                 mapOf(
                     "id" to device.deviceId,
@@ -266,10 +307,14 @@ internal class UsbCameraSession(
                     "summary" to device.deviceName,
                 )
             },
-            "resolutions" to (camera.getAllPreviewSizes()?.map { size ->
-                mapOf("width" to size.width, "height" to size.height)
-            } ?: emptyList()),
-            "frameRates" to frameRatesFor(request.previewWidth, request.previewHeight),
+            "resolutions" to cachedResolutions.ifEmpty {
+                refreshSizeCaches()
+                cachedResolutions
+            },
+            "frameRates" to cachedFrameRates.ifEmpty {
+                refreshSizeCaches()
+                cachedFrameRates
+            },
             "previewWidth" to request.previewWidth,
             "previewHeight" to request.previewHeight,
             "previewFps" to request.previewFps,
@@ -330,7 +375,9 @@ internal class UsbCameraSession(
         }
         request.previewWidth = width
         request.previewHeight = height
+        previewSurface.setAspectRatio(width, height)
         savePrefs()
+        refreshSizeCaches()
         if (camera.isCameraOpened()) {
             camera.updateResolution(width, height)
         }
@@ -345,6 +392,7 @@ internal class UsbCameraSession(
         }
         request.previewFps = fps
         savePrefs()
+        refreshSizeCaches()
         if (camera.isCameraOpened()) {
             camera.reopen()
         }
@@ -361,6 +409,7 @@ internal class UsbCameraSession(
         }
         request.previewFormat = next
         savePrefs()
+        refreshSizeCaches()
         if (camera.isCameraOpened()) {
             camera.reopen()
         }
@@ -398,12 +447,40 @@ internal class UsbCameraSession(
         savePrefs()
     }
 
+    private fun setSurfaceSize(width: Int?, height: Int?) {
+        if (width == null || height == null) {
+            return
+        }
+        applySurfaceSize(width, height)
+    }
+
+    private fun applySurfaceSize(width: Int, height: Int) {
+        if (width <= 0 || height <= 0) {
+            return
+        }
+        if (width == surfaceWidth && height == surfaceHeight) {
+            previewSurface.setBufferSize(width, height, textureEntry.surfaceTexture())
+            return
+        }
+        surfaceWidth = width
+        surfaceHeight = height
+        previewSurface.setBufferSize(width, height, textureEntry.surfaceTexture())
+        camera.peekCamera()?.setRenderSize(width, height)
+    }
+
     private fun frameRatesFor(width: Int, height: Int): List<Int> {
         val reported = camera.getSupportedFrameRates(width, height)
         if (reported.isNotEmpty()) {
             return reported
         }
         return listOf(15, 24, 30, 60)
+    }
+
+    private fun refreshSizeCaches() {
+        cachedResolutions = camera.getAllPreviewSizes()?.map { size ->
+            mapOf("width" to size.width, "height" to size.height)
+        } ?: emptyList()
+        cachedFrameRates = frameRatesFor(request.previewWidth, request.previewHeight)
     }
 
     private fun savePrefs() {
@@ -517,7 +594,6 @@ internal class UsbCameraSession(
         private const val KEY_AUDIO = "audio_source"
         private const val KEY_SEGMENT = "segment_minutes"
 
-        /** Message keys resolved by Flutter AppLocalizations. */
         private const val MSG_SAVED = "saved"
         private const val MSG_SAVE_FAILED = "save_failed"
         private const val MSG_NO_DEVICE = "no_device"

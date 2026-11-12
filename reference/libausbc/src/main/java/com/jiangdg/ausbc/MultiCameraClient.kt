@@ -319,6 +319,12 @@ class MultiCameraClient(ctx: Context, callback: IDeviceConnectCallBack?) {
                         // and use init preview size（measure size） for render size
                         val measureSize = try {
                             mSizeChangedFuture = SettableFuture()
+                            // Flutter Texture / already-sized surfaces won't get a View size callback.
+                            val readyWidth = view?.getSurfaceWidth() ?: 0
+                            val readyHeight = view?.getSurfaceHeight() ?: 0
+                            if (readyWidth > 0 && readyHeight > 0) {
+                                mSizeChangedFuture?.set(Pair(readyWidth, readyHeight))
+                            }
                             mSizeChangedFuture?.get(2000, TimeUnit.MILLISECONDS)
                         } catch (e: Exception) {
                             e.printStackTrace()
@@ -326,8 +332,12 @@ class MultiCameraClient(ctx: Context, callback: IDeviceConnectCallBack?) {
                         }
                         Logger.i(TAG, "surface measure size $measureSize")
                         mCameraRequest!!.renderMode = CameraRequest.RenderMode.OPENGL
-                        val screenWidth = view?.getSurfaceWidth() ?: previewWidth
-                        val screenHeight = view?.getSurfaceHeight() ?: previewHeight
+                        val screenWidth = (measureSize?.first?.takeIf { it > 0 }
+                            ?: view?.getSurfaceWidth()?.takeIf { it > 0 }
+                            ?: previewWidth)
+                        val screenHeight = (measureSize?.second?.takeIf { it > 0 }
+                            ?: view?.getSurfaceHeight()?.takeIf { it > 0 }
+                            ?: previewHeight)
                         val surface = view?.getSurface()
                         val previewCb = if (isRawPreviewData) {
                             null
@@ -572,6 +582,7 @@ class MultiCameraClient(ctx: Context, callback: IDeviceConnectCallBack?) {
          */
         fun setRenderSize(width: Int, height: Int) {
             mSizeChangedFuture?.set(Pair(width, height))
+            mRenderManager?.setRenderSize(width, height)
         }
 
         /**

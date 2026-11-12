@@ -66,6 +66,10 @@ class CameraClient extends ChangeNotifier {
 
   Future<void> retry() => _call('retry');
 
+  Future<void> setSurfaceSize(int width, int height) {
+    return _call('setSurfaceSize', {'width': width, 'height': height});
+  }
+
   Future<void> _call(String method, [Map<String, Object?>? args]) async {
     try {
       await _camera.invokeMethod<void>(method, args);

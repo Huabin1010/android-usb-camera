@@ -210,6 +210,63 @@ class AppLocalizationsJa extends AppLocalizations {
   String get languageSystem => 'システム既定';
 
   @override
+  String get appearance => '外観';
+
+  @override
+  String get themeSystem => 'システム既定';
+
+  @override
+  String get themeLight => 'ライト';
+
+  @override
+  String get themeDark => 'ダーク';
+
+  @override
+  String get tools => '調整';
+
+  @override
+  String get previewPresets => 'プレビュープリセット';
+
+  @override
+  String get presetCustom => 'カスタム…';
+
+  @override
+  String get presetManage => 'プリセット管理';
+
+  @override
+  String get presetAddCurrent => '現在の設定を追加';
+
+  @override
+  String get presetAdd => 'プリセットを追加';
+
+  @override
+  String get presetReset => 'デフォルトに戻す';
+
+  @override
+  String get presetDelete => '削除';
+
+  @override
+  String get presetEmpty => 'プリセットがありません';
+
+  @override
+  String get presetAdded => '追加しました';
+
+  @override
+  String get presetExists => '既にあります';
+
+  @override
+  String get presetPickResolution => '解像度を選択';
+
+  @override
+  String get presetPickFps => 'フレームレートを選択';
+
+  @override
+  String get presetSave => 'プリセットに保存';
+
+  @override
+  String get presetApply => '適用';
+
+  @override
   String get waitingUsb => 'USBカメラを待機中';
 
   @override
