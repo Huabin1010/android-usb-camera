@@ -1,6 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'l10n_ext.dart';
+
+/// 状态栏和导航栏透明，图标在深色预览上用浅色。
+SystemUiOverlayStyle previewOverlayStyle({required bool lightIcons}) {
+  final icon = lightIcons ? Brightness.light : Brightness.dark;
+  return SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarContrastEnforced: false,
+    statusBarIconBrightness: icon,
+    statusBarBrightness: lightIcons ? Brightness.dark : Brightness.light,
+    systemNavigationBarIconBrightness: icon,
+  );
+}
 
 /// 应用色板；随 [ThemeData.extensions] 切换浅色 / 暗色。
 ///
@@ -223,19 +237,24 @@ class C {
 }
 
 class T {
-  static TextStyle get title => TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: C.fg);
-  static TextStyle get sheetTitle => TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: C.fg);
+  static TextStyle get title =>
+      TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: C.fg);
+  static TextStyle get sheetTitle =>
+      TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: C.fg);
   static TextStyle get row => TextStyle(fontSize: 15, color: C.fg);
   static TextStyle get section => TextStyle(fontSize: 13, color: C.fg42);
   static TextStyle get small => TextStyle(fontSize: 13.5, color: C.fg42);
-  static TextStyle get chip => TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: C.fg68);
+  static TextStyle get chip =>
+      TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: C.fg68);
 }
 
 const revealDuration = Duration(milliseconds: 220);
 const panelDuration = Duration(milliseconds: 280);
 
 ThemeData buildTheme(Brightness brightness) {
-  final colors = brightness == Brightness.dark ? AppColors.dark : AppColors.light;
+  final colors = brightness == Brightness.dark
+      ? AppColors.dark
+      : AppColors.light;
   final base = ThemeData(brightness: brightness, useMaterial3: true);
   const noOverlay = WidgetStatePropertyAll<Color>(Colors.transparent);
   return base.copyWith(
@@ -251,15 +270,29 @@ ThemeData buildTheme(Brightness brightness) {
       onSurface: colors.fg,
       error: colors.error,
     ),
-    textButtonTheme: const TextButtonThemeData(style: ButtonStyle(overlayColor: noOverlay)),
-    filledButtonTheme: const FilledButtonThemeData(style: ButtonStyle(overlayColor: noOverlay)),
-    iconButtonTheme: const IconButtonThemeData(style: ButtonStyle(overlayColor: noOverlay)),
+    textButtonTheme: const TextButtonThemeData(
+      style: ButtonStyle(overlayColor: noOverlay),
+    ),
+    filledButtonTheme: const FilledButtonThemeData(
+      style: ButtonStyle(overlayColor: noOverlay),
+    ),
+    iconButtonTheme: const IconButtonThemeData(
+      style: ButtonStyle(overlayColor: noOverlay),
+    ),
     dividerColor: colors.border,
     listTileTheme: ListTileThemeData(
       iconColor: colors.fg68,
       textColor: colors.fg,
-      titleTextStyle: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: colors.fg),
-      subtitleTextStyle: TextStyle(fontSize: 13, height: 1.35, color: colors.fg42),
+      titleTextStyle: TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w500,
+        color: colors.fg,
+      ),
+      subtitleTextStyle: TextStyle(
+        fontSize: 13,
+        height: 1.35,
+        color: colors.fg42,
+      ),
     ),
     sliderTheme: SliderThemeData(
       activeTrackColor: colors.blue2,
@@ -270,7 +303,9 @@ ThemeData buildTheme(Brightness brightness) {
     ),
     radioTheme: RadioThemeData(
       fillColor: WidgetStateProperty.resolveWith((states) {
-        return states.contains(WidgetState.selected) ? colors.blue2 : colors.fg42;
+        return states.contains(WidgetState.selected)
+            ? colors.blue2
+            : colors.fg42;
       }),
     ),
     switchTheme: SwitchThemeData(
@@ -278,7 +313,9 @@ ThemeData buildTheme(Brightness brightness) {
         return states.contains(WidgetState.selected) ? colors.fg : colors.fg48;
       }),
       trackColor: WidgetStateProperty.resolveWith((states) {
-        return states.contains(WidgetState.selected) ? colors.switchTrackOn : colors.surfaceHi;
+        return states.contains(WidgetState.selected)
+            ? colors.switchTrackOn
+            : colors.surfaceHi;
       }),
       trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
     ),
@@ -307,7 +344,12 @@ ThemeData buildTheme(Brightness brightness) {
 
 /// 按下时整体变淡，没有水波纹。
 class Pressable extends StatefulWidget {
-  const Pressable({super.key, required this.child, this.onTap, this.pressedOpacity = 0.6});
+  const Pressable({
+    super.key,
+    required this.child,
+    this.onTap,
+    this.pressedOpacity = 0.6,
+  });
 
   final Widget child;
   final VoidCallback? onTap;
@@ -344,7 +386,14 @@ class _PressableState extends State<Pressable> {
 
 /// 32–36px 圆形描边按钮，对齐 Cursor Remote 顶栏圆钮。
 class CircleBtn extends StatelessWidget {
-  const CircleBtn({super.key, required this.icon, this.onTap, this.tooltip, this.size = 36, this.active = false});
+  const CircleBtn({
+    super.key,
+    required this.icon,
+    this.onTap,
+    this.tooltip,
+    this.size = 36,
+    this.active = false,
+  });
 
   final IconData icon;
   final VoidCallback? onTap;
@@ -362,7 +411,15 @@ class CircleBtn extends StatelessWidget {
         child: SizedBox(
           width: size,
           height: size,
-          child: Icon(icon, size: size * 0.5, color: onTap == null ? C.fg42 : active ? C.fg : C.fg68),
+          child: Icon(
+            icon,
+            size: size * 0.5,
+            color: onTap == null
+                ? C.fg42
+                : active
+                ? C.fg
+                : C.fg68,
+          ),
         ),
       ),
     );
@@ -387,7 +444,9 @@ Future<R?> showAppSheet<R>(
     ),
     clipBehavior: Clip.antiAlias,
     builder: (ctx) => ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * maxHeight),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(ctx).size.height * maxHeight,
+      ),
       child: SafeArea(
         top: false,
         child: Column(
@@ -399,7 +458,10 @@ Future<R?> showAppSheet<R>(
                 margin: const EdgeInsets.only(top: 8, bottom: 6),
                 width: 36,
                 height: 4,
-                decoration: BoxDecoration(color: C.fg30, borderRadius: BorderRadius.circular(2)),
+                decoration: BoxDecoration(
+                  color: C.fg30,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
             if (title != null)
@@ -461,7 +523,12 @@ class SheetRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: T.row),
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: T.row,
+                  ),
                   if (subtitle != null) ...[
                     const SizedBox(height: 2),
                     Text(

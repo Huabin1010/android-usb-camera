@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'src/camera_client.dart';
 import 'src/camera_screen.dart';
@@ -11,6 +12,8 @@ import 'src/user_prefs.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(previewOverlayStyle(lightIcons: true));
   final prefs = await UserPrefs.load();
   runApp(AusbcApp(prefs: prefs));
 }
@@ -27,7 +30,9 @@ class AusbcApp extends StatefulWidget {
 class _AusbcAppState extends State<AusbcApp> {
   late final LocaleController _locales = LocaleController(widget.prefs);
   late final ThemeController _themes = ThemeController(widget.prefs);
-  late final PreviewPresetController _presets = PreviewPresetController(widget.prefs);
+  late final PreviewPresetController _presets = PreviewPresetController(
+    widget.prefs,
+  );
 
   @override
   void dispose() {
@@ -52,8 +57,11 @@ class _AusbcAppState extends State<AusbcApp> {
           supportedLocales: AppLocalizations.supportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           builder: (context, child) {
-            final colors = Theme.of(context).extension<AppColors>() ??
-                (Theme.of(context).brightness == Brightness.dark ? AppColors.dark : AppColors.light);
+            final colors =
+                Theme.of(context).extension<AppColors>() ??
+                (Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.dark
+                    : AppColors.light);
             C.apply(colors);
             return child ?? const SizedBox.shrink();
           },

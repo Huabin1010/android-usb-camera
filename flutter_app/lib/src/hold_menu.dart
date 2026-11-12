@@ -43,6 +43,8 @@ class HoldMenu extends StatefulWidget {
     this.above = false,
     this.centered = false,
     this.endAligned = false,
+    this.fromScreenStart = false,
+    this.fromScreenEnd = false,
     this.enabled = true,
     this.onOpen,
     this.allowOpen,
@@ -61,6 +63,12 @@ class HoldMenu extends StatefulWidget {
 
   /// 菜单右边缘对齐按钮右边缘（右上角按钮展开时用）。
   final bool endAligned;
+
+  /// 菜单贴在屏幕左缘，从左侧向右展开（横屏左侧按钮用）。
+  final bool fromScreenStart;
+
+  /// 菜单贴在屏幕右缘，从右侧向左展开（横屏右侧按钮用）。
+  final bool fromScreenEnd;
 
   /// 每次展开时调用（如刷新菜单数据）。
   final VoidCallback? onOpen;
@@ -223,26 +231,39 @@ class _HoldMenuState extends State<HoldMenu>
     final btn = box?.size ?? const Size(30, 30);
     final mq = MediaQuery.of(overlayCtx);
     final screen = mq.size;
-    final width = math.min(widget.width, screen.width - 16);
-    final x = widget.centered
+    final margin = 8.0;
+    final width = math.min(widget.width, screen.width - margin * 2);
+    final pinned = widget.fromScreenStart || widget.fromScreenEnd;
+    final x = widget.fromScreenEnd
+        ? screen.width - width - margin
+        : widget.fromScreenStart
+        ? margin
+        : widget.centered
         ? origin.dx + btn.width / 2 - width / 2
         : widget.endAligned
-            ? origin.dx + btn.width - width
-            : origin.dx;
+        ? origin.dx + btn.width - width
+        : origin.dx;
     final left = x
-        .clamp(8.0, math.max(8.0, screen.width - width - 8))
+        .clamp(margin, math.max(margin, screen.width - width - margin))
         .toDouble();
     // 缩放原点落在按钮正下方（上方），看起来是从按钮里长出来的。
+    // 横屏则固定从屏幕右缘长出来。
     final ax = width <= 0
         ? -1.0
         : ((origin.dx + btn.width / 2 - left) / width * 2 - 1).clamp(-1.0, 1.0);
-    final anchor = widget.centered
+    final anchor = widget.fromScreenEnd
+        ? Alignment.centerRight
+        : widget.fromScreenStart
+        ? Alignment.centerLeft
+        : widget.centered
         ? Alignment(ax, widget.above ? 1 : -1)
         : widget.endAligned
-            ? (widget.above ? Alignment.bottomRight : Alignment.topRight)
-            : (widget.above ? Alignment.bottomLeft : Alignment.topLeft);
+        ? (widget.above ? Alignment.bottomRight : Alignment.topRight)
+        : (widget.above ? Alignment.bottomLeft : Alignment.topLeft);
     // 菜单最多占到按钮和屏幕边缘之间的空间，放不下时内部滚动。
-    final room = widget.above
+    final room = pinned
+        ? screen.height - mq.padding.vertical - margin * 2
+        : widget.above
         ? origin.dy - mq.padding.top - 16
         : screen.height - origin.dy - btn.height - mq.padding.bottom - 16;
     final open = CurvedAnimation(
@@ -278,7 +299,21 @@ class _HoldMenuState extends State<HoldMenu>
             ),
           ),
         ),
-        if (widget.above)
+        if (widget.fromScreenEnd)
+          Positioned(
+            right: margin,
+            top: mq.padding.top + margin,
+            bottom: mq.padding.bottom + margin,
+            child: Align(alignment: Alignment.centerRight, child: card),
+          )
+        else if (widget.fromScreenStart)
+          Positioned(
+            left: margin,
+            top: mq.padding.top + margin,
+            bottom: mq.padding.bottom + margin,
+            child: Align(alignment: Alignment.centerLeft, child: card),
+          )
+        else if (widget.above)
           Positioned(
             left: left,
             bottom: screen.height - origin.dy + 8,
@@ -401,10 +436,7 @@ class _HoldMenuState extends State<HoldMenu>
                   ),
                   if (it.subtitle case final s?) ...[
                     const SizedBox(height: 2),
-                    Text(
-                      s,
-                      style: TextStyle(fontSize: 12, color: C.fg30),
-                    ),
+                    Text(s, style: TextStyle(fontSize: 12, color: C.fg30)),
                   ],
                 ],
               ),
