@@ -37,15 +37,15 @@ internal object UsbCameraSessionHolder {
  * Avoids PlatformView / TextureView lockHardwareCanvas races that flash the preview.
  */
 internal class FlutterPreviewSurface(
-    surfaceTexture: SurfaceTexture,
+    private val surfaceTexture: SurfaceTexture,
     private var width: Int,
     private var height: Int,
 ) : IAspectRatio {
-    private val surface: Surface
+    private var surface: Surface = newSurface()
 
-    init {
+    private fun newSurface(): Surface {
         surfaceTexture.setDefaultBufferSize(width.coerceAtLeast(1), height.coerceAtLeast(1))
-        surface = Surface(surfaceTexture)
+        return Surface(surfaceTexture)
     }
 
     override fun setAspectRatio(width: Int, height: Int) {
@@ -73,7 +73,20 @@ internal class FlutterPreviewSurface(
 
     override fun getSurfaceHeight(): Int = height
 
-    override fun getSurface(): Surface = surface
+    override fun getSurface(): Surface {
+        // EGL 关闭预览时会 release 这块 Surface；回到前台后 Flutter 的 BufferQueue
+        // 也可能已经断开。失效的 Surface 传给 eglCreateWindowSurface 会直接把进程打崩。
+        if (!surface.isValid) {
+            android.util.Log.i("AusbcSurface", "preview surface invalid, recreate")
+            runCatching { surface.release() }
+            surface = runCatching { newSurface() }.getOrElse {
+                android.util.Log.e("AusbcSurface", "recreate preview surface failed: ${it.message}")
+                surface
+            }
+            android.util.Log.i("AusbcSurface", "preview surface valid=${surface.isValid}")
+        }
+        return surface
+    }
 
     override fun postUITask(task: () -> Unit) {
         Handler(Looper.getMainLooper()).post(task)

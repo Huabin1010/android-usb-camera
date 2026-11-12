@@ -87,26 +87,49 @@ class EGLEvn {
         if (mEglDisplay == EGL14.EGL_NO_DISPLAY) {
             return
         }
-        // If surface is null
-        // Force off screen mode
-        mEglSurface = if (surface == null) {
-            val attributes  = intArrayOf(
-                EGL14.EGL_WIDTH, surfaceWidth,
-                EGL14.EGL_HEIGHT, surfaceHeight,
-                EGL14.EGL_NONE
-            )
-            EGL14.eglCreatePbufferSurface(mEglDisplay, configs[0], attributes , 0)
+        // Surface 失效时 eglCreateWindowSurface 抛 IllegalArgumentException，
+        // 发生在 gl_render 线程上会直接杀掉进程。失败就退回离屏，预览线程继续活着。
+        val window = surface?.takeIf { it.isValid }
+        if (surface != null && window == null) {
+            Logger.e(TAG, "preview surface invalid, use offscreen ${surfaceWidth}x${surfaceHeight}")
+        }
+        var onScreen = false
+        mEglSurface = if (window == null) {
+            createPbuffer(surfaceWidth, surfaceHeight)
         } else {
-            val attributes  = intArrayOf(
-                EGL14.EGL_NONE
-            )
-            EGL14.eglCreateWindowSurface(mEglDisplay, configs[0], surface, attributes , 0)
+            val created = try {
+                EGL14.eglCreateWindowSurface(
+                    mEglDisplay,
+                    configs[0],
+                    window,
+                    intArrayOf(EGL14.EGL_NONE),
+                    0,
+                )
+            } catch (e: IllegalArgumentException) {
+                Logger.e(TAG, "eglCreateWindowSurface failed: ${e.message}")
+                EGL14.EGL_NO_SURFACE
+            }
+            if (created != EGL14.EGL_NO_SURFACE) {
+                onScreen = true
+                created
+            } else {
+                createPbuffer(surfaceWidth, surfaceHeight)
+            }
         }
         if (mEglSurface == EGL14.EGL_NO_SURFACE) {
             loggerError("Create window")
         }
-        mSurface = surface
-        Logger.i(TAG, "setupSurface Success!")
+        mSurface = if (onScreen) window else null
+        Logger.i(TAG, "setupSurface done, onScreen=$onScreen")
+    }
+
+    private fun createPbuffer(surfaceWidth: Int, surfaceHeight: Int): EGLSurface {
+        val attributes = intArrayOf(
+            EGL14.EGL_WIDTH, surfaceWidth.coerceAtLeast(1),
+            EGL14.EGL_HEIGHT, surfaceHeight.coerceAtLeast(1),
+            EGL14.EGL_NONE,
+        )
+        return EGL14.eglCreatePbufferSurface(mEglDisplay, configs[0], attributes, 0)
     }
 
     fun eglMakeCurrent() {

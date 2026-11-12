@@ -707,6 +707,7 @@ class _PreviewState extends State<_Preview> {
   late int _width = widget.client.snapshot.previewWidth;
   late int _height = widget.client.snapshot.previewHeight;
   late int _textureId = widget.client.snapshot.textureId;
+  late String _connection = widget.client.snapshot.connection;
   final TransformationController _zoom = TransformationController();
   int? _lastSurfaceW;
   int? _lastSurfaceH;
@@ -738,7 +739,8 @@ class _PreviewState extends State<_Preview> {
     final snapshot = widget.client.snapshot;
     if (snapshot.previewWidth == _width &&
         snapshot.previewHeight == _height &&
-        snapshot.textureId == _textureId) {
+        snapshot.textureId == _textureId &&
+        snapshot.connection == _connection) {
       return;
     }
     if (!mounted) {
@@ -748,6 +750,7 @@ class _PreviewState extends State<_Preview> {
       _width = snapshot.previewWidth;
       _height = snapshot.previewHeight;
       _textureId = snapshot.textureId;
+      _connection = snapshot.connection;
     });
   }
 
@@ -777,8 +780,10 @@ class _PreviewState extends State<_Preview> {
   Widget build(BuildContext context) {
     _reportCameraSurfaceSize();
     final ratio = previewAspectRatio(width: _width, height: _height);
+    // 没开预览时跟主题走，浅色模式用米白底，避免深色字落在黑底上看不清。
+    final live = _connection == 'opened' && _textureId >= 0;
     return ColoredBox(
-      color: Colors.black,
+      color: live ? Colors.black : C.bg,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final roomW = constraints.maxWidth;
