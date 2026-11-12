@@ -417,6 +417,13 @@ void UVCPreview::uvc_preview_frame_callback(uvc_frame_t *frame, void *vptr_args)
 #endif
 		return;
 	}
+	/* MJPEG over USB often delivers truncated JPEGs; keep them out of the preview queue. */
+	if (UNLIKELY(frame->frame_format == UVC_FRAME_FORMAT_MJPEG
+			&& !uvc_mjpeg_is_complete((const uint8_t *)frame->data, frame->actual_bytes))) {
+		LOGW("drop incomplete MJPEG frame: actual_bytes=%d %dx%d",
+			(int)frame->actual_bytes, frame->width, frame->height);
+		return;
+	}
 	if (LIKELY(preview->isRunning())) {
 		uvc_frame_t *copy = preview->get_frame(frame->data_bytes);
 		if (UNLIKELY(!copy)) {

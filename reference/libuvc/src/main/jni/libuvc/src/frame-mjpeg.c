@@ -66,6 +66,37 @@ static void _error_exit(j_common_ptr dinfo) {
 	longjmp(myerr->jmp, 1);
 }
 
+/* Corrupt / truncated MJPEG often still "decodes" into pink MCU blocks.
+ * Treat libjpeg warnings as fatal so broken frames are discarded upstream. */
+static void _emit_message(j_common_ptr dinfo, int msg_level) {
+	if (msg_level < 0) {
+		(*dinfo->err->error_exit)(dinfo);
+	}
+}
+
+/** True when buffer looks like a complete JPEG (SOI … EOI). */
+int uvc_mjpeg_is_complete(const uint8_t *data, size_t len) {
+	size_t i;
+	if (!data || len < 4) {
+		return 0;
+	}
+	if (data[0] != 0xFF || data[1] != 0xD8) {
+		return 0;
+	}
+	/* UVC payloads sometimes pad after EOI; walk back over padding first. */
+	i = len;
+	while (i >= 2) {
+		if (data[i - 2] == 0xFF && data[i - 1] == 0xD9) {
+			return 1;
+		}
+		if (data[i - 1] != 0x00) {
+			break;
+		}
+		i--;
+	}
+	return 0;
+}
+
 /* ISO/IEC 10918-1:1993(E) K.3.3. Default Huffman tables used by MJPEG UVC devices
  which don't specify a Huffman table in the JPEG stream. */
 static const unsigned char dc_lumi_len[] = {
@@ -469,6 +500,9 @@ uvc_error_t uvc_mjpeg2yuyv(uvc_frame_t *in, uvc_frame_t *out) {
 	out->actual_bytes = 0;	// XXX
 	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_MJPEG))
 		return UVC_ERROR_INVALID_PARAM;
+	/* Drop truncated / overrun MJPEG before decode — otherwise pink MCU blocks flash in preview. */
+	if (!uvc_mjpeg_is_complete((const uint8_t *)in->data, in->actual_bytes))
+		return UVC_ERROR_OTHER;
 
 	if (uvc_ensure_frame_size(out, in->width * in->height * 2) < 0)
 		return UVC_ERROR_NO_MEM;
@@ -490,6 +524,7 @@ uvc_error_t uvc_mjpeg2yuyv(uvc_frame_t *in, uvc_frame_t *out) {
 	struct error_mgr jerr;
 	dinfo.err = jpeg_std_error(&jerr.super);
 	jerr.super.error_exit = _error_exit;
+	jerr.super.emit_message = _emit_message;
 
 	if (setjmp(jerr.jmp)) {
 		goto fail;
@@ -525,6 +560,9 @@ uvc_error_t uvc_mjpeg2yuyv(uvc_frame_t *in, uvc_frame_t *out) {
 		for (; dinfo.output_scanline < dinfo.output_height ;) {
 			// convert lines of mjpeg data to YCbCr
 			num_scanlines = jpeg_read_scanlines(&dinfo, buffer, MAX_READLINE);
+			if (UNLIKELY(num_scanlines <= 0)) {
+				goto fail;
+			}
 			// convert YCbCr to yuyv(YUV422)
 			for (j = 0; j < num_scanlines; j++) {
 				yuyv = data + (lines_read + j) * out_step;
@@ -543,10 +581,46 @@ uvc_error_t uvc_mjpeg2yuyv(uvc_frame_t *in, uvc_frame_t *out) {
 
 	jpeg_finish_decompress(&dinfo);
 	jpeg_destroy_decompress(&dinfo);
-	return lines_read == out->height ? UVC_SUCCESS : UVC_ERROR_OTHER;
+	if (lines_read != out->height) {
+		out->actual_bytes = 0;
+		return UVC_ERROR_OTHER;
+	}
+	/* Soft-corrupt JPEGs can still report full height while the lower MCUs are empty.
+	 * If the bottom band is near-black while the upper band has content, drop the frame. */
+	{
+		const size_t row_bytes = (size_t)out->step;
+		const size_t band = out->height >= 20 ? (size_t)(out->height / 10) : 1;
+		size_t y, x;
+		unsigned long top_sum = 0, bot_sum = 0;
+		unsigned long top_n = 0, bot_n = 0;
+		for (y = 0; y < band; y++) {
+			const uint8_t *row = data + y * row_bytes;
+			for (x = 0; x < row_bytes; x += 2) { /* Y samples in YUYV */
+				top_sum += row[x];
+				top_n++;
+			}
+		}
+		for (y = out->height - band; y < out->height; y++) {
+			const uint8_t *row = data + y * row_bytes;
+			for (x = 0; x < row_bytes; x += 2) {
+				bot_sum += row[x];
+				bot_n++;
+			}
+		}
+		if (top_n > 0 && bot_n > 0) {
+			const unsigned top_avg = (unsigned)(top_sum / top_n);
+			const unsigned bot_avg = (unsigned)(bot_sum / bot_n);
+			if (top_avg > 24 && bot_avg < 8) {
+				out->actual_bytes = 0;
+				return UVC_ERROR_OTHER;
+			}
+		}
+	}
+	return UVC_SUCCESS;
 
 fail:
 	jpeg_destroy_decompress(&dinfo);
-	return lines_read == out->height ? UVC_SUCCESS : UVC_ERROR_OTHER+1;
+	out->actual_bytes = 0;
+	return UVC_ERROR_OTHER + 1;
 }
 

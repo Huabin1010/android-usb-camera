@@ -129,12 +129,19 @@ class RenderManager(
             }
             MSG_GL_CHANGED_SIZE -> {
                 (msg.obj as Pair<*, *>).apply {
-                    mWidth = first as Int
-                    mHeight = second as Int
+                    val nextW = first as Int
+                    val nextH = second as Int
+                    // Recreating FBOs / buffer size on every identical call causes preview flicker.
+                    if (nextW == mWidth && nextH == mHeight) {
+                        return true
+                    }
+                    mWidth = nextW
+                    mHeight = nextH
                     mCameraRender?.setSize(mWidth, mHeight)
                     mScreenRender?.setSize(mWidth, mHeight)
                     mCaptureRender?.setSize(mWidth, mHeight)
                     mCameraSurfaceTexture?.setDefaultBufferSize(mWidth, mHeight)
+                    Logger.i(TAG, "render size changed to ${mWidth}x${mHeight}")
                 }
             }
             MSG_GL_SAVE_IMAGE -> {

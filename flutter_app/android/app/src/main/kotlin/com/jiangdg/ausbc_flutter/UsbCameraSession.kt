@@ -60,9 +60,13 @@ internal class FlutterPreviewSurface(
         if (width <= 0 || height <= 0) {
             return
         }
+        if (width == this.width && height == this.height) {
+            return
+        }
         this.width = width
         this.height = height
         texture.setDefaultBufferSize(width, height)
+        android.util.Log.i("AusbcSurface", "setDefaultBufferSize ${width}x${height}")
     }
 
     override fun getSurfaceWidth(): Int = width
@@ -458,10 +462,14 @@ internal class UsbCameraSession(
         if (width <= 0 || height <= 0) {
             return
         }
+        // Same size: do not touch SurfaceTexture / FBO — repeated setDefaultBufferSize flashes the preview.
         if (width == surfaceWidth && height == surfaceHeight) {
-            previewSurface.setBufferSize(width, height, textureEntry.surfaceTexture())
             return
         }
+        android.util.Log.i(
+            "AusbcSurface",
+            "applySurfaceSize ${surfaceWidth}x${surfaceHeight} -> ${width}x${height}",
+        )
         surfaceWidth = width
         surfaceHeight = height
         previewSurface.setBufferSize(width, height, textureEntry.surfaceTexture())

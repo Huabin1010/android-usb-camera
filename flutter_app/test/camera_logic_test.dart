@@ -56,6 +56,44 @@ void main() {
     expect(tall.width, lessThanOrEqualTo(390));
   });
 
+  test('skips same-size preview surface resize', () {
+    expect(
+      shouldResizePreviewSurface(
+        currentWidth: 1280,
+        currentHeight: 720,
+        nextWidth: 1280,
+        nextHeight: 720,
+      ),
+      isFalse,
+    );
+    expect(
+      shouldResizePreviewSurface(
+        currentWidth: 1280,
+        currentHeight: 720,
+        nextWidth: 1920,
+        nextHeight: 1080,
+      ),
+      isTrue,
+    );
+    expect(
+      shouldResizePreviewSurface(
+        currentWidth: 1280,
+        currentHeight: 720,
+        nextWidth: 0,
+        nextHeight: 720,
+      ),
+      isFalse,
+    );
+  });
+
+  test('detects complete MJPEG frames by SOI/EOI', () {
+    expect(isCompleteMjpegFrame([0xFF, 0xD8, 0x00, 0xFF, 0xD9]), isTrue);
+    expect(isCompleteMjpegFrame([0xFF, 0xD8, 0x00, 0xFF, 0xD9, 0x00, 0x00]), isTrue);
+    expect(isCompleteMjpegFrame([0xFF, 0xD8, 0x00, 0x01]), isFalse);
+    expect(isCompleteMjpegFrame([0x00, 0x01, 0xFF, 0xD9]), isFalse);
+    expect(isCompleteMjpegFrame([]), isFalse);
+  });
+
   test('filters one-tap preview presets to device capabilities', () {
     final presets = availablePreviewPresets(
       resolutions: const [

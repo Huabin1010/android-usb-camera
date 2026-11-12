@@ -87,6 +87,42 @@ double previewAspectRatio({required int width, required int height}) {
   return (width: width, height: height);
 }
 
+/// Whether native preview buffers should be resized.
+///
+/// Repeated same-size `setDefaultBufferSize` / FBO reloads flash the Texture.
+bool shouldResizePreviewSurface({
+  required int currentWidth,
+  required int currentHeight,
+  required int nextWidth,
+  required int nextHeight,
+}) {
+  if (nextWidth <= 0 || nextHeight <= 0) {
+    return false;
+  }
+  return nextWidth != currentWidth || nextHeight != currentHeight;
+}
+
+/// Mirrors native `uvc_mjpeg_is_complete`: SOI at start and EOI before trailing zero padding.
+bool isCompleteMjpegFrame(List<int> data) {
+  if (data.length < 4) {
+    return false;
+  }
+  if (data[0] != 0xFF || data[1] != 0xD8) {
+    return false;
+  }
+  var i = data.length;
+  while (i >= 2) {
+    if (data[i - 2] == 0xFF && data[i - 1] == 0xD9) {
+      return true;
+    }
+    if (data[i - 1] != 0x00) {
+      break;
+    }
+    i--;
+  }
+  return false;
+}
+
 /// 一键预览预设：分辨率 + 帧率一起选，避免拆成两步。
 class PreviewPreset {
   const PreviewPreset({required this.width, required this.height, required this.fps});
