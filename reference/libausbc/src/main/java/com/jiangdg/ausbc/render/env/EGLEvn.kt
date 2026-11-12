@@ -176,7 +176,8 @@ class EGLEvn {
             EGL14.eglReleaseThread()
             EGL14.eglTerminate(mEglDisplay)
         }
-		mSurface?.release()
+        // Surface 由预览控件持有（Flutter 的 SurfaceTexture）。这里 release 会把
+        // 正在重开的窗口 Surface 拆掉，下一帧只能落到离屏缓冲，画面就一直是黑的。
         mEglDisplay = EGL14.EGL_NO_DISPLAY
         mEglSurface = EGL14.EGL_NO_SURFACE
         mEglContext = EGL14.EGL_NO_CONTEXT      
