@@ -103,5 +103,19 @@
       "fps": {"type": "int"}
     }
   },
-  "defaultDeviceName": "USB camera"
+  "defaultDeviceName": "USB camera",
+  "msgSaved": "Saved",
+  "msgSaveFailed": "Could not save",
+  "msgNoDevice": "No USB camera found",
+  "msgPreviewNotReady": "Preview is not ready yet",
+  "msgCameraError": "Camera error",
+  "previewStatus": "{width}×{height} · {format} · {fps}fps",
+  "@previewStatus": {
+    "placeholders": {
+      "width": {"type": "int"},
+      "height": {"type": "int"},
+      "format": {"type": "String"},
+      "fps": {"type": "int"}
+    }
+  }
 }

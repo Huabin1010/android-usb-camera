@@ -259,4 +259,24 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get defaultDeviceName => 'USB कैमरा';
+
+  @override
+  String get msgSaved => 'सहेजा गया';
+
+  @override
+  String get msgSaveFailed => 'सहेजा नहीं जा सका';
+
+  @override
+  String get msgNoDevice => 'USB कैमरा नहीं मिला';
+
+  @override
+  String get msgPreviewNotReady => 'पूर्वावलोकन अभी तैयार नहीं है';
+
+  @override
+  String get msgCameraError => 'कैमरा त्रुटि';
+
+  @override
+  String previewStatus(int width, int height, String format, int fps) {
+    return '$width×$height · $format · ${fps}fps';
+  }
 }

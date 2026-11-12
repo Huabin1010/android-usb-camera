@@ -255,4 +255,24 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get defaultDeviceName => 'USB 카메라';
+
+  @override
+  String get msgSaved => '저장됨';
+
+  @override
+  String get msgSaveFailed => '저장하지 못했습니다';
+
+  @override
+  String get msgNoDevice => 'USB 카메라를 찾을 수 없습니다';
+
+  @override
+  String get msgPreviewNotReady => '미리보기가 아직 준비되지 않았습니다';
+
+  @override
+  String get msgCameraError => '카메라 오류';
+
+  @override
+  String previewStatus(int width, int height, String format, int fps) {
+    return '$width×$height · $format · ${fps}fps';
+  }
 }

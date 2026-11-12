@@ -78,5 +78,11 @@
   "shutter": "غالق",
   "fpsLabel": "{fps} FPS",
   "fpsOption": "{fps} fps",
-  "defaultDeviceName": "كاميرا USB"
+  "defaultDeviceName": "كاميرا USB",
+  "msgSaved": "تم الحفظ",
+  "msgSaveFailed": "تعذر الحفظ",
+  "msgNoDevice": "لم يتم العثور على كاميرا USB",
+  "msgPreviewNotReady": "المعاينة غير جاهزة بعد",
+  "msgCameraError": "خطأ في الكاميرا",
+  "previewStatus": "{width}×{height} · {format} · {fps}fps"
 }

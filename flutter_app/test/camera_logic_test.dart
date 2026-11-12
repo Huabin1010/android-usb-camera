@@ -56,7 +56,7 @@ void main() {
       'previewFps': 30,
       'imageValues': {'brightness': 40},
       'imageSupported': ['brightness'],
-      'snackbar': '已保存',
+      'snackbar': 'saved',
     });
 
     expect(snapshot.connection, 'opened');
@@ -67,6 +67,15 @@ void main() {
     expect(snapshot.frameRates, [15, 30, 60]);
     expect(snapshot.previewFps, 30);
     expect(snapshot.imageValues['brightness'], 40);
-    expect(snapshot.snackbar, '已保存');
+    expect(snapshot.snackbar, 'saved');
+  });
+
+  test('keeps empty device names for l10n default display', () {
+    final snapshot = CameraSnapshot.fromMap({
+      'devices': [
+        {'id': 1, 'summary': '/dev/bus/usb/001/001'},
+      ],
+    });
+    expect(snapshot.devices.single.name, isEmpty);
   });
 }

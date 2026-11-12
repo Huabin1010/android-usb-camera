@@ -78,5 +78,11 @@
   "shutter": "शटर",
   "fpsLabel": "{fps} FPS",
   "fpsOption": "{fps} fps",
-  "defaultDeviceName": "USB कैमरा"
+  "defaultDeviceName": "USB कैमरा",
+  "msgSaved": "सहेजा गया",
+  "msgSaveFailed": "सहेजा नहीं जा सका",
+  "msgNoDevice": "USB कैमरा नहीं मिला",
+  "msgPreviewNotReady": "पूर्वावलोकन अभी तैयार नहीं है",
+  "msgCameraError": "कैमरा त्रुटि",
+  "previewStatus": "{width}×{height} · {format} · {fps}fps"
 }

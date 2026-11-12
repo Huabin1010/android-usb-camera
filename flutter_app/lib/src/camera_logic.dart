@@ -65,6 +65,7 @@ double overlayPanelWidth(double previewWidth) {
   return room.clamp(180, 300);
 }
 
+/// Keeps a pure formatter for unit tests; UI should prefer [AppLocalizations.previewStatus].
 String formatPreviewLabel({
   required int width,
   required int height,

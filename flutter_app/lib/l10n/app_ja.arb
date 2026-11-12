@@ -78,5 +78,11 @@
   "shutter": "シャッター",
   "fpsLabel": "{fps} FPS",
   "fpsOption": "{fps} fps",
-  "defaultDeviceName": "USBカメラ"
+  "defaultDeviceName": "USBカメラ",
+  "msgSaved": "保存しました",
+  "msgSaveFailed": "保存に失敗しました",
+  "msgNoDevice": "USBカメラが見つかりません",
+  "msgPreviewNotReady": "プレビューの準備ができていません",
+  "msgCameraError": "カメラエラー",
+  "previewStatus": "{width}×{height} · {format} · {fps}fps"
 }

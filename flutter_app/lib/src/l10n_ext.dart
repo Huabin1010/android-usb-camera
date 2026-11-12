@@ -69,4 +69,35 @@ extension AppLocalizationsLabels on AppLocalizations {
   String aboutSubtitle(String version) {
     return '${appVersion(version)}\n$appEngineCredit\n${appLicense(AppInfo.license)}';
   }
+
+  /// Maps native/platform message keys (and legacy Chinese) to localized copy.
+  String platformMessage(String? raw, {String? fallback}) {
+    if (raw == null || raw.isEmpty) {
+      return fallback ?? '';
+    }
+    return switch (raw) {
+      'saved' || '已保存' => msgSaved,
+      'save_failed' || '保存失败' => msgSaveFailed,
+      'no_device' || '没有发现 USB 摄像头' => msgNoDevice,
+      'preview_not_ready' || '预览还没准备好' => msgPreviewNotReady,
+      'camera_error' => msgCameraError,
+      _ => fallback ?? raw,
+    };
+  }
+
+  String deviceDisplayName(String? name) {
+    if (name == null || name.trim().isEmpty) {
+      return defaultDeviceName;
+    }
+    return name;
+  }
+
+  String previewStatusLabel({
+    required int width,
+    required int height,
+    required String format,
+    required int fps,
+  }) {
+    return previewStatus(width, height, format.toUpperCase(), fps);
+  }
 }

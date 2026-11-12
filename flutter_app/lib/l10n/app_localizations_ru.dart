@@ -263,4 +263,24 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get defaultDeviceName => 'USB-камера';
+
+  @override
+  String get msgSaved => 'Сохранено';
+
+  @override
+  String get msgSaveFailed => 'Не удалось сохранить';
+
+  @override
+  String get msgNoDevice => 'USB-камера не найдена';
+
+  @override
+  String get msgPreviewNotReady => 'Превью ещё не готово';
+
+  @override
+  String get msgCameraError => 'Ошибка камеры';
+
+  @override
+  String previewStatus(int width, int height, String format, int fps) {
+    return '$width×$height · $format · ${fps}fps';
+  }
 }

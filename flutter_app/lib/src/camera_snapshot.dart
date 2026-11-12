@@ -115,7 +115,7 @@ class CameraSnapshot {
       devices: _maps(raw['devices']).map((item) {
         return UsbDeviceItem(
           id: _asInt(item['id']),
-          name: item['name'] as String? ?? 'USB camera',
+          name: item['name'] as String? ?? '',
           summary: item['summary'] as String? ?? '',
         );
       }).toList(),

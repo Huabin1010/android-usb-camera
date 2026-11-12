@@ -78,5 +78,11 @@
   "shutter": "Затвор",
   "fpsLabel": "{fps} FPS",
   "fpsOption": "{fps} fps",
-  "defaultDeviceName": "USB-камера"
+  "defaultDeviceName": "USB-камера",
+  "msgSaved": "Сохранено",
+  "msgSaveFailed": "Не удалось сохранить",
+  "msgNoDevice": "USB-камера не найдена",
+  "msgPreviewNotReady": "Превью ещё не готово",
+  "msgCameraError": "Ошибка камеры",
+  "previewStatus": "{width}×{height} · {format} · {fps}fps"
 }

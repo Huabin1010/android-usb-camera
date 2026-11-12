@@ -56,7 +56,8 @@ class _CameraScreenState extends State<CameraScreen> {
       return;
     }
     _lastSnackbar = message;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    final text = context.l10n.platformMessage(message, fallback: context.l10n.msgCameraError);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
   Future<void> _setWorkspace(String next) async {
@@ -129,7 +130,7 @@ class _CameraScreenState extends State<CameraScreen> {
                     size: 18,
                     color: device.id == snapshot.deviceId ? C.blue2 : C.fg68,
                   ),
-                  title: device.name,
+                  title: context.l10n.deviceDisplayName(device.name),
                   subtitle: device.summary,
                   chevron: false,
                   trailing: device.id == snapshot.deviceId
@@ -902,7 +903,7 @@ class _StatusCluster extends StatelessWidget {
             ),
             if (opened)
               Text(
-                formatPreviewLabel(
+                context.l10n.previewStatusLabel(
                   width: snapshot.previewWidth,
                   height: snapshot.previewHeight,
                   format: snapshot.previewFormat,
@@ -948,7 +949,7 @@ class _ConnectionMessage extends StatelessWidget {
         final isError = snapshot.connection == 'error';
         final headline = l10n.connectionTitle(snapshot.connection);
         final detail = isError
-            ? (snapshot.message ?? l10n.errorHint)
+            ? l10n.platformMessage(snapshot.message, fallback: l10n.errorHint)
             : (snapshot.devices.isEmpty ? l10n.waitingHintEmpty : l10n.waitingHintDetected);
         return Center(
           child: Padding(

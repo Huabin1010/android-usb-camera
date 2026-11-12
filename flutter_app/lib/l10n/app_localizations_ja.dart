@@ -254,4 +254,24 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get defaultDeviceName => 'USBカメラ';
+
+  @override
+  String get msgSaved => '保存しました';
+
+  @override
+  String get msgSaveFailed => '保存に失敗しました';
+
+  @override
+  String get msgNoDevice => 'USBカメラが見つかりません';
+
+  @override
+  String get msgPreviewNotReady => 'プレビューの準備ができていません';
+
+  @override
+  String get msgCameraError => 'カメラエラー';
+
+  @override
+  String previewStatus(int width, int height, String format, int fps) {
+    return '$width×$height · $format · ${fps}fps';
+  }
 }

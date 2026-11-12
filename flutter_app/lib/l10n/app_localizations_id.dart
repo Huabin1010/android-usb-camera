@@ -262,4 +262,24 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get defaultDeviceName => 'Kamera USB';
+
+  @override
+  String get msgSaved => 'Tersimpan';
+
+  @override
+  String get msgSaveFailed => 'Gagal menyimpan';
+
+  @override
+  String get msgNoDevice => 'Kamera USB tidak ditemukan';
+
+  @override
+  String get msgPreviewNotReady => 'Pratinjau belum siap';
+
+  @override
+  String get msgCameraError => 'Kesalahan kamera';
+
+  @override
+  String previewStatus(int width, int height, String format, int fps) {
+    return '$width×$height · $format · ${fps}fps';
+  }
 }

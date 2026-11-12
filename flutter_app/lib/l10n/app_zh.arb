@@ -78,5 +78,11 @@
   "shutter": "快门",
   "fpsLabel": "{fps} FPS",
   "fpsOption": "{fps} fps",
-  "defaultDeviceName": "USB 摄像头"
+  "defaultDeviceName": "USB 摄像头",
+  "msgSaved": "已保存",
+  "msgSaveFailed": "保存失败",
+  "msgNoDevice": "没有发现 USB 摄像头",
+  "msgPreviewNotReady": "预览还没准备好",
+  "msgCameraError": "相机出错",
+  "previewStatus": "{width}×{height} · {format} · {fps}fps"
 }

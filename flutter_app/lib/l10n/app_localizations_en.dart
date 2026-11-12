@@ -264,4 +264,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get defaultDeviceName => 'USB camera';
+
+  @override
+  String get msgSaved => 'Saved';
+
+  @override
+  String get msgSaveFailed => 'Could not save';
+
+  @override
+  String get msgNoDevice => 'No USB camera found';
+
+  @override
+  String get msgPreviewNotReady => 'Preview is not ready yet';
+
+  @override
+  String get msgCameraError => 'Camera error';
+
+  @override
+  String previewStatus(int width, int height, String format, int fps) {
+    return '$width×$height · $format · ${fps}fps';
+  }
 }

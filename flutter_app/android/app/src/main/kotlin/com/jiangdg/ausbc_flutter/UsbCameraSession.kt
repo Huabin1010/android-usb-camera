@@ -142,7 +142,8 @@ internal class UsbCameraSession(
             mainHandler.post {
                 stopTimer()
                 recording = false
-                toast(error ?: "保存失败")
+                // Stable key for Flutter l10n; engine detail stays in logs via message when needed.
+                toast(MSG_SAVE_FAILED)
             }
         }
 
@@ -151,7 +152,7 @@ internal class UsbCameraSession(
                 stopTimer()
                 recording = false
                 if (!path.isNullOrBlank()) {
-                    toast("已保存")
+                    toast(MSG_SAVED)
                 }
                 publish()
             }
@@ -221,7 +222,11 @@ internal class UsbCameraSession(
             ICameraStateCallBack.State.ERROR -> "error"
             ICameraStateCallBack.State.CLOSED -> "closed"
         }
-        message = msg
+        message = when (code) {
+            ICameraStateCallBack.State.ERROR -> MSG_CAMERA_ERROR
+            ICameraStateCallBack.State.OPENED -> null
+            else -> msg
+        }
         if (code == ICameraStateCallBack.State.OPENED) {
             camera.getCurrentPreviewSize()?.let { size ->
                 request.previewWidth = size.width
@@ -229,8 +234,8 @@ internal class UsbCameraSession(
             }
             refreshDevices()
         }
-        if (!msg.isNullOrBlank() && code == ICameraStateCallBack.State.ERROR) {
-            snackbar = msg
+        if (code == ICameraStateCallBack.State.ERROR) {
+            snackbar = MSG_CAMERA_ERROR
         }
         publish()
         snackbar = null
@@ -257,7 +262,7 @@ internal class UsbCameraSession(
             "devices" to devices.map { device ->
                 mapOf(
                     "id" to device.deviceId,
-                    "name" to (device.productName ?: "USB 摄像头"),
+                    "name" to (device.productName?.takeIf { it.isNotBlank() } ?: ""),
                     "summary" to device.deviceName,
                 )
             },
@@ -468,7 +473,7 @@ internal class UsbCameraSession(
     private fun retry() {
         val target = devices.firstOrNull() ?: camera.getDeviceList()?.firstOrNull()
         if (target == null) {
-            toast("没有发现 USB 摄像头")
+            toast(MSG_NO_DEVICE)
             return
         }
         camera.requestPermission(target)
@@ -511,6 +516,12 @@ internal class UsbCameraSession(
         private const val KEY_ROTATE = "rotate"
         private const val KEY_AUDIO = "audio_source"
         private const val KEY_SEGMENT = "segment_minutes"
+
+        /** Message keys resolved by Flutter AppLocalizations. */
+        private const val MSG_SAVED = "saved"
+        private const val MSG_SAVE_FAILED = "save_failed"
+        private const val MSG_NO_DEVICE = "no_device"
+        private const val MSG_CAMERA_ERROR = "camera_error"
     }
 }
 

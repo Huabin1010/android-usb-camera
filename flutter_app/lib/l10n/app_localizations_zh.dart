@@ -254,6 +254,26 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get defaultDeviceName => 'USB 摄像头';
+
+  @override
+  String get msgSaved => '已保存';
+
+  @override
+  String get msgSaveFailed => '保存失败';
+
+  @override
+  String get msgNoDevice => '没有发现 USB 摄像头';
+
+  @override
+  String get msgPreviewNotReady => '预览还没准备好';
+
+  @override
+  String get msgCameraError => '相机出错';
+
+  @override
+  String previewStatus(int width, int height, String format, int fps) {
+    return '$width×$height · $format · ${fps}fps';
+  }
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -506,4 +526,24 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get defaultDeviceName => 'USB 攝影機';
+
+  @override
+  String get msgSaved => '已儲存';
+
+  @override
+  String get msgSaveFailed => '儲存失敗';
+
+  @override
+  String get msgNoDevice => '找不到 USB 攝影機';
+
+  @override
+  String get msgPreviewNotReady => '預覽尚未就緒';
+
+  @override
+  String get msgCameraError => '攝影機錯誤';
+
+  @override
+  String previewStatus(int width, int height, String format, int fps) {
+    return '$width×$height · $format · ${fps}fps';
+  }
 }

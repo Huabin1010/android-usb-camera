@@ -36,7 +36,7 @@ class MainActivity : FlutterActivity() {
         MethodChannel(messenger, CAMERA_CHANNEL).setMethodCallHandler { call, result ->
             val session = UsbCameraSessionHolder.session
             if (session == null) {
-                result.error("preview", "预览还没准备好", null)
+                result.error("preview", "preview_not_ready", null)
                 return@setMethodCallHandler
             }
             session.onMethodCall(call, result)

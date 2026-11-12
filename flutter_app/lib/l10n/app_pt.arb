@@ -78,5 +78,11 @@
   "shutter": "Obturador",
   "fpsLabel": "{fps} FPS",
   "fpsOption": "{fps} fps",
-  "defaultDeviceName": "Câmera USB"
+  "defaultDeviceName": "Câmera USB",
+  "msgSaved": "Salvo",
+  "msgSaveFailed": "Não foi possível salvar",
+  "msgNoDevice": "Nenhuma câmera USB encontrada",
+  "msgPreviewNotReady": "A pré-visualização ainda não está pronta",
+  "msgCameraError": "Erro da câmera",
+  "previewStatus": "{width}×{height} · {format} · {fps}fps"
 }

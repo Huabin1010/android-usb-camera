@@ -78,5 +78,11 @@
   "shutter": "快門",
   "fpsLabel": "{fps} FPS",
   "fpsOption": "{fps} fps",
-  "defaultDeviceName": "USB 攝影機"
+  "defaultDeviceName": "USB 攝影機",
+  "msgSaved": "已儲存",
+  "msgSaveFailed": "儲存失敗",
+  "msgNoDevice": "找不到 USB 攝影機",
+  "msgPreviewNotReady": "預覽尚未就緒",
+  "msgCameraError": "攝影機錯誤",
+  "previewStatus": "{width}×{height} · {format} · {fps}fps"
 }

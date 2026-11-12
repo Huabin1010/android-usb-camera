@@ -260,4 +260,24 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get defaultDeviceName => 'كاميرا USB';
+
+  @override
+  String get msgSaved => 'تم الحفظ';
+
+  @override
+  String get msgSaveFailed => 'تعذر الحفظ';
+
+  @override
+  String get msgNoDevice => 'لم يتم العثور على كاميرا USB';
+
+  @override
+  String get msgPreviewNotReady => 'المعاينة غير جاهزة بعد';
+
+  @override
+  String get msgCameraError => 'خطأ في الكاميرا';
+
+  @override
+  String previewStatus(int width, int height, String format, int fps) {
+    return '$width×$height · $format · ${fps}fps';
+  }
 }

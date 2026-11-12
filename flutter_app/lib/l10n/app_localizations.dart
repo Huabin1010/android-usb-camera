@@ -592,6 +592,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'USB camera'**
   String get defaultDeviceName;
+
+  /// No description provided for @msgSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get msgSaved;
+
+  /// No description provided for @msgSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save'**
+  String get msgSaveFailed;
+
+  /// No description provided for @msgNoDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'No USB camera found'**
+  String get msgNoDevice;
+
+  /// No description provided for @msgPreviewNotReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview is not ready yet'**
+  String get msgPreviewNotReady;
+
+  /// No description provided for @msgCameraError.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera error'**
+  String get msgCameraError;
+
+  /// No description provided for @previewStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'{width}×{height} · {format} · {fps}fps'**
+  String previewStatus(int width, int height, String format, int fps);
 }
 
 class _AppLocalizationsDelegate
