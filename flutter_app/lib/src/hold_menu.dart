@@ -42,6 +42,7 @@ class HoldMenu extends StatefulWidget {
     this.width = 264,
     this.above = false,
     this.centered = false,
+    this.endAligned = false,
     this.enabled = true,
     this.onOpen,
     this.allowOpen,
@@ -57,6 +58,9 @@ class HoldMenu extends StatefulWidget {
 
   /// 菜单水平居中对齐按钮（按钮在顶栏中间时用），否则左对齐。
   final bool centered;
+
+  /// 菜单右边缘对齐按钮右边缘（右上角按钮展开时用）。
+  final bool endAligned;
 
   /// 每次展开时调用（如刷新菜单数据）。
   final VoidCallback? onOpen;
@@ -222,7 +226,9 @@ class _HoldMenuState extends State<HoldMenu>
     final width = math.min(widget.width, screen.width - 16);
     final x = widget.centered
         ? origin.dx + btn.width / 2 - width / 2
-        : origin.dx;
+        : widget.endAligned
+            ? origin.dx + btn.width - width
+            : origin.dx;
     final left = x
         .clamp(8.0, math.max(8.0, screen.width - width - 8))
         .toDouble();
@@ -232,7 +238,9 @@ class _HoldMenuState extends State<HoldMenu>
         : ((origin.dx + btn.width / 2 - left) / width * 2 - 1).clamp(-1.0, 1.0);
     final anchor = widget.centered
         ? Alignment(ax, widget.above ? 1 : -1)
-        : (widget.above ? Alignment.bottomLeft : Alignment.topLeft);
+        : widget.endAligned
+            ? (widget.above ? Alignment.bottomRight : Alignment.topRight)
+            : (widget.above ? Alignment.bottomLeft : Alignment.topLeft);
     // 菜单最多占到按钮和屏幕边缘之间的空间，放不下时内部滚动。
     final room = widget.above
         ? origin.dy - mq.padding.top - 16

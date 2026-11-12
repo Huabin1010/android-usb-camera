@@ -71,6 +71,22 @@ double previewAspectRatio({required int width, required int height}) {
   return width / height;
 }
 
+/// 预览显示尺寸：优先横向铺满，高度按比例；若超出屏幕高度则整体缩小以完整显示。
+({double width, double height}) previewFitSize({
+  required double roomWidth,
+  required double roomHeight,
+  required double aspectRatio,
+}) {
+  final ratio = aspectRatio <= 0 ? 4 / 3 : aspectRatio;
+  var width = roomWidth;
+  var height = width / ratio;
+  if (height > roomHeight) {
+    height = roomHeight;
+    width = height * ratio;
+  }
+  return (width: width, height: height);
+}
+
 /// 一键预览预设：分辨率 + 帧率一起选，避免拆成两步。
 class PreviewPreset {
   const PreviewPreset({required this.width, required this.height, required this.fps});

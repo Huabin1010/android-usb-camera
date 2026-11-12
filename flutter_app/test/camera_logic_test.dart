@@ -45,6 +45,17 @@ void main() {
     expect(previewAspectRatio(width: 0, height: 480), closeTo(4 / 3, 0.0001));
   });
 
+  test('fits preview by width first and keeps the full frame on screen', () {
+    final wide = previewFitSize(roomWidth: 390, roomHeight: 800, aspectRatio: 16 / 9);
+    expect(wide.width, closeTo(390, 0.001));
+    expect(wide.height, closeTo(390 * 9 / 16, 0.001));
+
+    final tall = previewFitSize(roomWidth: 390, roomHeight: 200, aspectRatio: 4 / 3);
+    expect(tall.height, closeTo(200, 0.001));
+    expect(tall.width, closeTo(200 * 4 / 3, 0.001));
+    expect(tall.width, lessThanOrEqualTo(390));
+  });
+
   test('filters one-tap preview presets to device capabilities', () {
     final presets = availablePreviewPresets(
       resolutions: const [

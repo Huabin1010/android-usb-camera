@@ -128,9 +128,11 @@ class _CameraScreenState extends State<CameraScreen> {
           builder: (context, constraints) {
             final short = constraints.maxHeight < 520;
             final reserve = showCapture ? (short ? 112.0 : captureBarReserve) : 72.0;
-            // 抽屉打开时面板紧挨轨道，并向右铺满。
+            // 抽屉打开时面板紧挨轨道；用 left/right 约束，避免宽度算多撑出屏幕。
             final panelLeft = drawerOpen ? drawerRailWidth + 16 : 8.0;
-            final panelWidth = overlayPanelWidth(constraints.maxWidth - panelLeft);
+            const panelRight = 0.0;
+            final panelWidth = overlayPanelWidth(constraints.maxWidth - panelLeft - panelRight);
+            final panelMaxHeight = (constraints.maxHeight - 56 - reserve).clamp(160.0, constraints.maxHeight);
             return Stack(
               fit: StackFit.expand,
               children: [
@@ -177,8 +179,9 @@ class _CameraScreenState extends State<CameraScreen> {
                 _SidePanel(
                   open: sectionOpen,
                   left: panelLeft,
+                  right: panelRight,
                   width: panelWidth,
-                  bottomReserve: reserve,
+                  maxHeight: panelMaxHeight,
                   child: sectionOpen
                       ? _Panel(
                           client: widget.client,
@@ -268,31 +271,131 @@ class _TopChrome extends StatelessWidget {
             top: 10,
             left: 12,
             right: 12,
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (showDrawerToggle && onToggleDrawer != null)
-                  CircleBtn(
-                    icon: Icons.tune,
-                    tooltip: context.l10n.tools,
-                    active: drawerOpen,
-                    onTap: onToggleDrawer,
+                Expanded(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      if (showDrawerToggle && onToggleDrawer != null)
+                        CircleBtn(
+                          icon: Icons.tune,
+                          tooltip: context.l10n.tools,
+                          active: drawerOpen,
+                          onTap: onToggleDrawer,
+                        ),
+                      _WorkspaceChip(workspace: workspace, onSelect: onSelectWorkspace),
+                      _DevicesChip(client: client),
+                    ],
                   ),
-                _WorkspaceChip(workspace: workspace, onSelect: onSelectWorkspace),
-                _DevicesChip(client: client),
-                if (onHideWatch != null)
+                ),
+                const SizedBox(width: 8),
+                _AudioChromeButton(client: client),
+                if (onHideWatch != null) ...[
+                  const SizedBox(width: 8),
                   CircleBtn(
                     icon: Icons.visibility_off_outlined,
                     tooltip: context.l10n.hideControls,
                     onTap: onHideWatch,
                   ),
+                ],
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 首页右上角音频入口：点开展开音源与试听。
+class _AudioChromeButton extends StatelessWidget {
+  const _AudioChromeButton({required this.client});
+
+  final CameraClient client;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return ListenableBuilder(
+      listenable: client,
+      builder: (context, _) {
+        final snapshot = client.snapshot;
+        final busy = snapshot.isRecording;
+        return Semantics(
+          button: true,
+          label: l10n.sectionAudio,
+          child: HoldMenu(
+            // 贴右上角展开：宽度收窄，避免被屏幕夹到左侧。
+            width: 208,
+            endAligned: true,
+            header: l10n.audioSource,
+            items: [
+              HoldMenuItem(
+                'system',
+                l10n.micSystem,
+                leading: Icon(Icons.mic_none_outlined, size: 16, color: C.fg68),
+                checked: snapshot.audioSource == 'system',
+                enabled: !busy,
+              ),
+              HoldMenuItem(
+                'device',
+                l10n.micDevice,
+                leading: Icon(Icons.usb, size: 16, color: C.fg68),
+                checked: snapshot.audioSource == 'device',
+                enabled: !busy,
+              ),
+              HoldMenuItem(
+                'auto',
+                l10n.micAuto,
+                leading: Icon(Icons.auto_mode_outlined, size: 16, color: C.fg68),
+                checked: snapshot.audioSource == 'auto',
+                enabled: !busy,
+              ),
+              HoldMenuItem(
+                'mic',
+                l10n.listenMic,
+                leading: Icon(
+                  snapshot.micOn ? Icons.hearing : Icons.hearing_disabled_outlined,
+                  size: 16,
+                  color: C.fg68,
+                ),
+                checked: snapshot.micOn,
+                group: 1,
+              ),
+            ],
+            onSelect: (id, _) {
+              if (id == 'mic') {
+                client.toggleMic();
+                return;
+              }
+              client.selectAudio(id);
+            },
+            builder: (context, open, pressed) {
+              final active = open || snapshot.micOn;
+              return Tooltip(
+                message: l10n.sectionAudio,
+                child: Material(
+                  color: active ? C.surfaceHi : C.surface,
+                  shape: CircleBorder(side: BorderSide(color: C.border)),
+                  child: SizedBox(
+                    width: 36,
+                    height: 36,
+                    child: Icon(
+                      Icons.graphic_eq,
+                      size: 18,
+                      color: active ? C.fg : C.fg68,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }
@@ -490,15 +593,17 @@ class _SidePanel extends StatefulWidget {
   const _SidePanel({
     required this.open,
     required this.width,
-    required this.bottomReserve,
+    required this.maxHeight,
     required this.child,
     this.left = 8,
+    this.right = 0,
   });
 
   final bool open;
   final double width;
-  final double bottomReserve;
+  final double maxHeight;
   final double left;
+  final double right;
   final Widget child;
 
   @override
@@ -545,34 +650,39 @@ class _SidePanelState extends State<_SidePanel> with SingleTickerProviderStateMi
   @override
   Widget build(BuildContext context) {
     final t = Curves.easeOutCubic.transform(_controller.value);
+    const radius = BorderRadius.horizontal(left: Radius.circular(14));
+    // left+right 锁在屏幕内；再按 t 从左侧裁剪展开，高度随内容封顶。
     return Positioned(
       left: widget.left,
+      right: widget.right,
       top: 56,
-      bottom: widget.bottomReserve,
-      width: widget.width * t,
       child: IgnorePointer(
         ignoring: t == 0,
-        child: ClipRRect(
-          borderRadius: const BorderRadius.horizontal(left: Radius.circular(14)),
-          child: OverflowBox(
-            alignment: Alignment.centerLeft,
-            minWidth: widget.width,
-            maxWidth: widget.width,
-            child: Transform.translate(
-              offset: Offset((t - 1) * 24, 0),
-              child: Opacity(
-                opacity: t,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: C.surface,
-                    borderRadius: const BorderRadius.horizontal(left: Radius.circular(14)),
-                    border: Border(
-                      left: BorderSide(color: C.border),
-                      top: BorderSide(color: C.border),
-                      bottom: BorderSide(color: C.border),
+        child: Opacity(
+          opacity: t,
+          child: ClipRect(
+            child: Align(
+              alignment: Alignment.topLeft,
+              widthFactor: t == 0 ? 0.001 : t,
+              heightFactor: 1,
+              child: ClipRRect(
+                borderRadius: radius,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: widget.width,
+                    maxHeight: widget.maxHeight,
+                  ),
+                  child: SizedBox(
+                    width: widget.width,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: C.surface,
+                        borderRadius: radius,
+                        border: Border.all(color: C.border),
+                      ),
+                      child: _shown ?? widget.child,
                     ),
                   ),
-                  child: _shown ?? widget.child,
                 ),
               ),
             ),
@@ -673,13 +783,10 @@ class _PreviewState extends State<_Preview> {
         builder: (context, constraints) {
           final roomW = constraints.maxWidth;
           final roomH = constraints.maxHeight;
-          // cover：铺满屏幕并居中裁剪；顶栏浮在画面上，不再留黑边。
-          var viewW = roomW;
-          var viewH = viewW / ratio;
-          if (viewH < roomH) {
-            viewH = roomH;
-            viewW = viewH * ratio;
-          }
+          // contain：横向优先铺满，高度自适应；完整显示画面，必要时整体缩小适应屏幕。
+          final fitted = previewFitSize(roomWidth: roomW, roomHeight: roomH, aspectRatio: ratio);
+          final viewW = fitted.width;
+          final viewH = fitted.height;
           final left = (roomW - viewW) / 2;
           final top = (roomH - viewH) / 2;
           final frame = Positioned(
@@ -719,7 +826,7 @@ class _PreviewState extends State<_Preview> {
   }
 }
 
-const _toolSectionIds = <String>['picture', 'video', 'effects', 'audio'];
+const _toolSectionIds = <String>['picture', 'video', 'effects'];
 
 /// 左侧工具抽屉宽度：图标 + 文案。
 const drawerRailWidth = 88.0;
@@ -728,7 +835,6 @@ IconData _toolSectionIcon(String id) {
   return switch (id) {
     'video' => Icons.videocam_outlined,
     'effects' => Icons.auto_awesome_outlined,
-    'audio' => Icons.graphic_eq,
     'appearance' => Icons.palette_outlined,
     'settings' => Icons.settings_outlined,
     _ => Icons.tune,
@@ -971,6 +1077,7 @@ class _Panel extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return Column(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
@@ -987,7 +1094,8 @@ class _Panel extends StatelessWidget {
             ],
           ),
         ),
-        Expanded(
+        Flexible(
+          fit: FlexFit.loose,
           child: ListenableBuilder(
             listenable: client,
             builder: (context, _) => _body(context, client.snapshot),
@@ -1002,7 +1110,6 @@ class _Panel extends StatelessWidget {
       'picture' => _PictureList(client: client, snapshot: snapshot),
       'video' => _VideoList(client: client, presets: presets, snapshot: snapshot),
       'effects' => _EffectList(client: client, snapshot: snapshot),
-      'audio' => _AudioList(client: client, snapshot: snapshot),
       'appearance' => _AppearanceList(themes: themes),
       _ => _SettingsList(client: client, locales: locales, presets: presets, snapshot: snapshot),
     };
@@ -1022,6 +1129,8 @@ class _AppearanceList extends StatelessWidget {
       builder: (context, _) {
         final code = themes.code;
         return ListView(
+          shrinkWrap: true,
+          primary: false,
           padding: const EdgeInsets.fromLTRB(8, 4, 8, 16),
           children: [
             Padding(
@@ -1053,6 +1162,8 @@ class _PictureList extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return ListView(
+      shrinkWrap: true,
+      primary: false,
       padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
       children: [
         if (snapshot.autoFocusSupported)
@@ -1113,6 +1224,8 @@ class _VideoList extends StatelessWidget {
           catalog: presets.items,
         );
         return ListView(
+          shrinkWrap: true,
+          primary: false,
           padding: const EdgeInsets.only(bottom: 12),
           children: [
             Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 4), child: Text(l10n.format, style: T.section)),
@@ -1187,6 +1300,8 @@ class _EffectList extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return ListView(
+      shrinkWrap: true,
+      primary: false,
       padding: const EdgeInsets.only(bottom: 12),
       children: [
         Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 4), child: Text(l10n.filter, style: T.section)),
@@ -1201,42 +1316,6 @@ class _EffectList extends StatelessWidget {
   }
 
   Widget _choice(BuildContext context, String label, bool selected, VoidCallback onTap) {
-    return SheetRow(
-      title: label,
-      chevron: false,
-      trailing: selected ? Icon(Icons.check, size: 18, color: C.fg) : null,
-      onTap: onTap,
-    );
-  }
-}
-
-class _AudioList extends StatelessWidget {
-  const _AudioList({required this.client, required this.snapshot});
-
-  final CameraClient client;
-  final CameraSnapshot snapshot;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final busy = snapshot.isRecording;
-    return ListView(
-      padding: const EdgeInsets.only(bottom: 12),
-      children: [
-        Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 4), child: Text(l10n.audioSource, style: T.section)),
-        _choice(context, l10n.micSystem, snapshot.audioSource == 'system', busy ? null : () => client.selectAudio('system')),
-        _choice(context, l10n.micDevice, snapshot.audioSource == 'device', busy ? null : () => client.selectAudio('device')),
-        _choice(context, l10n.micAuto, snapshot.audioSource == 'auto', busy ? null : () => client.selectAudio('auto')),
-        SheetRow(
-          title: l10n.listenMic,
-          chevron: false,
-          trailing: Switch(value: snapshot.micOn, onChanged: (_) => client.toggleMic()),
-        ),
-      ],
-    );
-  }
-
-  Widget _choice(BuildContext context, String label, bool selected, VoidCallback? onTap) {
     return SheetRow(
       title: label,
       chevron: false,
@@ -1267,6 +1346,8 @@ class _SettingsList extends StatelessWidget {
       builder: (context, _) {
         final localeCode = locales.code;
         return ListView(
+          shrinkWrap: true,
+          primary: false,
           padding: const EdgeInsets.only(bottom: 12),
           children: [
             Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 4), child: Text(l10n.about, style: T.section)),
