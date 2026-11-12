@@ -273,8 +273,20 @@ class _HoldMenuState extends State<HoldMenu>
     final left = x
         .clamp(margin, math.max(margin, screen.width - width - margin))
         .toDouble();
+    const gap = 8.0;
+    final spaceBelow =
+        screen.height -
+        (origin.dy + btn.height + gap) -
+        math.max(mq.padding.bottom, mq.viewPadding.bottom);
+    final spaceAbove =
+        origin.dy - gap - math.max(mq.padding.top, mq.viewPadding.top);
+    // 下方放不下时翻到按钮上方，避免横屏里菜单画出屏幕。
+    final openAbove = !pinned &&
+        (widget.above
+            ? spaceAbove + 24 >= spaceBelow
+            : spaceBelow + 24 < spaceAbove);
     // 缩放原点落在按钮正下方（上方），看起来是从按钮里长出来的。
-    // 横屏则固定从屏幕右缘长出来。
+    // 横屏则固定从屏幕侧缘长出来。
     final ax = width <= 0
         ? -1.0
         : ((origin.dx + btn.width / 2 - left) / width * 2 - 1).clamp(-1.0, 1.0);
@@ -283,16 +295,16 @@ class _HoldMenuState extends State<HoldMenu>
         : widget.fromScreenStart
         ? Alignment.centerLeft
         : widget.centered
-        ? Alignment(ax, widget.above ? 1 : -1)
+        ? Alignment(ax, openAbove ? 1 : -1)
         : widget.endAligned
-        ? (widget.above ? Alignment.bottomRight : Alignment.topRight)
-        : (widget.above ? Alignment.bottomLeft : Alignment.topLeft);
+        ? (openAbove ? Alignment.bottomRight : Alignment.topRight)
+        : (openAbove ? Alignment.bottomLeft : Alignment.topLeft);
     // 菜单最多占到按钮和屏幕边缘之间的空间，放不下时内部滚动。
     final room = pinned
         ? screen.height - mq.padding.vertical - margin * 2
-        : widget.above
-        ? origin.dy - mq.padding.top - 16
-        : screen.height - origin.dy - btn.height - mq.padding.bottom - 16;
+        : openAbove
+        ? spaceAbove
+        : spaceBelow;
     final open = CurvedAnimation(
       parent: _anim,
       curve: Curves.easeOutBack,
@@ -307,9 +319,11 @@ class _HoldMenuState extends State<HoldMenu>
       child: ScaleTransition(
         scale: Tween<double>(begin: 0.55, end: 1).animate(open),
         alignment: anchor,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: math.max(120, room)),
-          child: _menuCard(width),
+        child: ClipRect(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: math.max(1, room)),
+            child: _menuCard(width),
+          ),
         ),
       ),
     );
@@ -340,14 +354,18 @@ class _HoldMenuState extends State<HoldMenu>
             bottom: mq.padding.bottom + margin,
             child: Align(alignment: Alignment.centerLeft, child: card),
           )
-        else if (widget.above)
+        else if (openAbove)
           Positioned(
             left: left,
-            bottom: screen.height - origin.dy + 8,
+            bottom: screen.height - origin.dy + gap,
             child: card,
           )
         else
-          Positioned(left: left, top: origin.dy + btn.height + 8, child: card),
+          Positioned(
+            left: left,
+            top: origin.dy + btn.height + gap,
+            child: card,
+          ),
       ],
     );
   }

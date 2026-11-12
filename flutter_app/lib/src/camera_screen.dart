@@ -557,13 +557,10 @@ class _LandscapeRail extends StatelessWidget {
             ),
           if (showCapture) ...[
             Positioned(
-              top: modeTop,
-              right: inset,
-              child: workspaceChip,
-            ),
-            Positioned(
+              top: modeTop + slot,
+              bottom: 0,
               right: inset + (slot - shutter) / 2,
-              bottom: 16,
+              width: shutter,
               child: _CaptureBar(
                 client: client,
                 compact: true,
@@ -571,6 +568,11 @@ class _LandscapeRail extends StatelessWidget {
                 slot: slot,
                 shutterSize: shutter,
               ),
+            ),
+            Positioned(
+              top: modeTop,
+              right: inset,
+              child: workspaceChip,
             ),
           ],
         ],
@@ -2345,98 +2347,104 @@ class _CaptureBar extends StatelessWidget {
       builder: (context, _) {
         final snapshot = client.snapshot;
         final l10n = context.l10n;
+        final modes = DecoratedBox(
+          decoration: BoxDecoration(
+            color: C.chromeScrim,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: C.border),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(3),
+            child: Flex(
+              direction: rail ? Axis.vertical : Axis.horizontal,
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _CaptureChip(
+                  label: l10n.modePhoto,
+                  icon: Icons.photo_camera,
+                  selected: snapshot.mode == 'photo',
+                  enabled: !snapshot.isRecording,
+                  iconOnly: rail,
+                  onTap: () => client.selectMode('photo'),
+                ),
+                _CaptureChip(
+                  label: l10n.modeVideo,
+                  icon: Icons.videocam,
+                  selected: snapshot.mode == 'video',
+                  enabled: !snapshot.isRecording,
+                  iconOnly: rail,
+                  onTap: () => client.selectMode('video'),
+                ),
+                _CaptureChip(
+                  label: l10n.modeAudio,
+                  icon: Icons.mic,
+                  selected: snapshot.mode == 'audio',
+                  enabled: !snapshot.isRecording,
+                  iconOnly: rail,
+                  onTap: () => client.selectMode('audio'),
+                ),
+              ],
+            ),
+          ),
+        );
+        final shutterButton = Pressable(
+          onTap: client.shutter,
+          child: Semantics(
+            button: true,
+            label: l10n.shutter,
+            child: Container(
+              width: rail ? (shutterSize ?? slot ?? 44) : 76,
+              height: rail ? (shutterSize ?? slot ?? 44) : 76,
+              decoration: BoxDecoration(
+                color: C.surface,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: snapshot.isRecording ? C.error : C.fg30,
+                  width: 1.5,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: AnimatedContainer(
+                duration: revealDuration,
+                curve: Curves.linear,
+                width: snapshot.isRecording
+                    ? (rail ? 12 : 26)
+                    : (rail ? (shutterSize ?? slot ?? 44) * 0.62 : 52),
+                height: snapshot.isRecording
+                    ? (rail ? 12 : 26)
+                    : (rail ? (shutterSize ?? slot ?? 44) * 0.62 : 52),
+                decoration: BoxDecoration(
+                  color: snapshot.mode == 'photo' ? C.fg : C.error,
+                  borderRadius: BorderRadius.circular(
+                    snapshot.isRecording ? 6 : 26,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        if (rail) {
+          // 原来的拍照/录像/录音紧挨模式按钮。快门放在下面剩下的空间里。
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(height: 8),
+              modes,
+              Expanded(child: Center(child: shutterButton)),
+            ],
+          );
+        }
         final controls = Flex(
-          direction: rail
-              ? Axis.vertical
-              : compact
-              ? Axis.horizontal
-              : Axis.vertical,
+          direction: compact ? Axis.horizontal : Axis.vertical,
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: C.chromeScrim,
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: C.border),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(3),
-                child: Flex(
-                  direction: rail ? Axis.vertical : Axis.horizontal,
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    _CaptureChip(
-                      label: l10n.modePhoto,
-                      icon: Icons.photo_camera,
-                      selected: snapshot.mode == 'photo',
-                      enabled: !snapshot.isRecording,
-                      iconOnly: rail,
-                      onTap: () => client.selectMode('photo'),
-                    ),
-                    _CaptureChip(
-                      label: l10n.modeVideo,
-                      icon: Icons.videocam,
-                      selected: snapshot.mode == 'video',
-                      enabled: !snapshot.isRecording,
-                      iconOnly: rail,
-                      onTap: () => client.selectMode('video'),
-                    ),
-                    _CaptureChip(
-                      label: l10n.modeAudio,
-                      icon: Icons.mic,
-                      selected: snapshot.mode == 'audio',
-                      enabled: !snapshot.isRecording,
-                      iconOnly: rail,
-                      onTap: () => client.selectMode('audio'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            modes,
             SizedBox(width: compact ? 16 : 0, height: compact ? 0 : 16),
-            Pressable(
-              onTap: client.shutter,
-              child: Semantics(
-                button: true,
-                label: l10n.shutter,
-                child: Container(
-                  width: rail ? (shutterSize ?? slot ?? 44) : 76,
-                  height: rail ? (shutterSize ?? slot ?? 44) : 76,
-                  decoration: BoxDecoration(
-                    color: C.surface,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: snapshot.isRecording ? C.error : C.fg30,
-                      width: 1.5,
-                    ),
-                  ),
-                  alignment: Alignment.center,
-                  child: AnimatedContainer(
-                    duration: revealDuration,
-                    curve: Curves.linear,
-                    width: snapshot.isRecording
-                        ? (rail ? 12 : 26)
-                        : (rail ? (shutterSize ?? slot ?? 44) * 0.62 : 52),
-                    height: snapshot.isRecording
-                        ? (rail ? 12 : 26)
-                        : (rail ? (shutterSize ?? slot ?? 44) * 0.62 : 52),
-                    decoration: BoxDecoration(
-                      color: snapshot.mode == 'photo' ? C.fg : C.error,
-                      borderRadius: BorderRadius.circular(
-                        snapshot.isRecording ? 6 : 26,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            shutterButton,
           ],
         );
-        if (rail) {
-          return controls;
-        }
         return Align(
           alignment: Alignment.bottomCenter,
           child: Padding(
