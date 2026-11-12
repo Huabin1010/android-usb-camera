@@ -42,6 +42,8 @@ internal class FlutterPreviewSurface(
     private var height: Int,
 ) : IAspectRatio {
     private var surface: Surface = newSurface()
+    private var bufferWidth = width
+    private var bufferHeight = height
 
     private fun newSurface(): Surface {
         surfaceTexture.setDefaultBufferSize(width.coerceAtLeast(1), height.coerceAtLeast(1))
@@ -60,11 +62,14 @@ internal class FlutterPreviewSurface(
         if (width <= 0 || height <= 0) {
             return
         }
-        if (width == this.width && height == this.height) {
-            return
-        }
+        // 宽高字段也会被 setAspectRatio 改掉，不能拿它判断缓冲是否已经更新。
         this.width = width
         this.height = height
+        if (width == bufferWidth && height == bufferHeight) {
+            return
+        }
+        bufferWidth = width
+        bufferHeight = height
         texture.setDefaultBufferSize(width, height)
         android.util.Log.i("AusbcSurface", "setDefaultBufferSize ${width}x${height}")
     }
@@ -289,7 +294,8 @@ internal class UsbCameraSession(
             }
             refreshDevices()
             refreshSizeCaches()
-            applySurfaceSize(surfaceWidth, surfaceHeight)
+            // 用刚协商好的采集尺寸，不要用上一次的缓冲尺寸，否则新画面会缩在旧缓冲的角落里。
+            applySurfaceSize(request.previewWidth, request.previewHeight)
         }
         if (code == ICameraStateCallBack.State.ERROR) {
             snackbar = MSG_CAMERA_ERROR
@@ -393,6 +399,7 @@ internal class UsbCameraSession(
         request.previewWidth = width
         request.previewHeight = height
         previewSurface.setAspectRatio(width, height)
+        applySurfaceSize(width, height)
         savePrefs()
         refreshSizeCaches()
         if (camera.isCameraOpened()) {
