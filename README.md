@@ -6,8 +6,8 @@
 
 | 项 | 说明 |
 | --- | --- |
-| 包名 | `com.jiangdg.ausbc.flutter` |
-| 版本 | 3.9.0（versionCode 138） |
+| 包名 | `com.huanghuabin.usbcamera` |
+| 版本 | 3.10.0（versionCode 139） |
 | 系统 | Android 7.0+（minSdk 24），targetSdk 35 |
 | ABI | `armeabi-v7a`、`arm64-v8a`（不含 x86） |
 | 语言 | 跟随系统；设置内可切换。en / 简中 / 繁中 / ja / ko / es / pt / de / fr / ru / id / hi / ar |
@@ -80,6 +80,7 @@ cd flutter_app && flutter build apk --release
 - [产品需求](docs/USB摄像头产品需求.md)
 - [验收清单](docs/验收清单.md)
 - [与 USB Camera 功能对照](docs/与USB摄像头功能对照.md)
+- [Google Play 上架材料](docs/play/上架清单.md)
 
 ## 致谢
 

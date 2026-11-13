@@ -20,7 +20,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.jiangdg.ausbc.flutter"
+        applicationId = "com.huanghuabin.usbcamera"
         minSdk = 24
         targetSdk = 35
         versionCode = flutter.versionCode

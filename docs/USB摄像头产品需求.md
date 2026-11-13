@@ -8,7 +8,7 @@
 
 用户用 OTG 把 UVC 摄像头、内窥镜或标准采集卡接到手机上，需要立刻看到画面，并能拍照、录像、录音。系统相机不认这类设备。
 
-引擎已经能打开 UVC、走 OpenGL 预览、把照片写入 `DCIM/Camera`、把录像打成 H.264 + AAC 的 MP4。原先的界面是 Jetpack Compose，现已归档。日常使用的是 Flutter 应用，包名 `com.jiangdg.ausbc.flutter`。改 Dart 可以热重载；改 native 引擎需要重新启动调试会话。
+引擎已经能打开 UVC、走 OpenGL 预览、把照片写入 `DCIM/Camera`、把录像打成 H.264 + AAC 的 MP4。原先的界面是 Jetpack Compose，现已归档。日常使用的是 Flutter 应用，包名 `com.huanghuabin.usbcamera`。改 Dart 可以热重载；改 native 引擎需要重新启动调试会话。
 
 USB Camera 12.3.1 比我们多出一整条「离开界面继续工作，并向局域网或推流地址输出」的链路。那些能力大多不在当前引擎里，不能靠补几个按钮完成。
 
